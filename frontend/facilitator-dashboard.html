@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facilitator – Social Coding LMS</title>
+    <link rel="stylesheet" href="shared-theme.css">
+    <style>
+        .flow-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1.25rem; margin-top:1.5rem; }
+        .flow-card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:16px; padding:1.75rem;
+            cursor:pointer; transition:all 0.2s; text-decoration:none; color:var(--text-primary); display:block; }
+        .flow-card:hover { transform:translateY(-3px); border-color:rgba(191,247,71,0.4); background:var(--card-hover-bg); }
+        .flow-icon { font-size:2rem; margin-bottom:0.75rem; }
+        .flow-title { font-size:1.2rem; font-weight:700; margin-bottom:0.4rem; }
+        .flow-desc { font-family:'Inter',sans-serif; font-size:0.85rem; color:var(--text-secondary); line-height:1.5; }
+        .flow-cta { display:inline-block; margin-top:0.9rem; font-family:'Inter',sans-serif; font-size:0.82rem; font-weight:700; color:var(--accent-purple); }
+    </style>
+</head>
+<body>
+<div class="bg-glow bg-glow-1"></div><div class="bg-glow bg-glow-2"></div>
+<header>
+    <div class="header-content">
+        <a class="brand" href="/facilitator-dashboard.html"><div class="brand-icon">&lt;/&gt;</div><div><div class="brand-text">Social Coding LMS</div><div class="brand-sub">Facilitator</div></div></a>
+        <div class="header-right">
+            <nav class="nav-links">
+                <a class="nav-link active" href="/facilitator-dashboard.html">Home</a>
+                <a class="nav-link" href="/facilitator-students.html">My Learners</a>
+                <a class="nav-link" href="/facilitator-attendance.html">Attendance</a>
+                <a class="nav-link" href="/facilitator-assignments.html">Assignments</a>
+                <a class="nav-link" href="/facilitator-modules.html">Modules</a>
+            </nav>
+            <button class="sync-badge synced" id="syncBadge" onclick="flushOutbox()"><span class="dot"></span> …</button>
+            <label class="theme-toggle"><span id="themeIcon">🌙</span><div class="toggle-track" onclick="toggleTheme()"><div class="toggle-thumb"></div></div></label>
+            <div style="display:flex;align-items:center;gap:0.6rem;"><div class="avatar" id="userAvatar">SM</div><div><div class="user-name" id="userName"></div><div class="user-meta" id="userMeta"></div></div></div>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </div>
+</header>
+<main>
+    <div class="page-header">
+        <div class="page-title" id="welcome">Welcome back </div>
+        <div class="page-subtitle" id="schoolLine">Everything here works offline and syncs when you have signal.</div>
+    </div>
+
+    <div class="offline-banner" id="offlineBanner">📴 You're offline. Attendance capture still works — records sync automatically when signal returns.</div>
+
+    <div class="stats-grid">
+        <div class="stat-card"><div class="top-bar top-bar-purple"></div><div class="stat-icon"></div><div class="stat-value" id="statLearners">…</div><div class="stat-label">Learners</div></div>
+        <div class="stat-card"><div class="top-bar top-bar-amber"></div><div class="stat-icon"></div><div class="stat-value" id="statQueue">…</div><div class="stat-label">Submissions to mark</div></div>
+        <div class="stat-card"><div class="top-bar top-bar-green"></div><div class="stat-icon"></div><div class="stat-value" id="statOpen">…</div><div class="stat-label">Open assignments</div></div>
+    </div>
+
+    <div class="flow-grid">
+        <a class="flow-card" href="/facilitator-attendance.html">
+            <div class="flow-icon"></div>
+            <div class="flow-title">Take attendance</div>
+            <div class="flow-desc">Roster loads with everyone present — tap the absentees and save. About 30 seconds, no signal needed.</div>
+            <span class="flow-cta">Open register →</span>
+        </a>
+        <a class="flow-card" href="/facilitator-assignments.html">
+            <div class="flow-icon"></div>
+            <div class="flow-title">Assignments & marking</div>
+            <div class="flow-desc">Publish assignments with open and due dates. Return marks within your 7-day window.</div>
+            <span class="flow-cta">Open assignments →</span>
+        </a>
+        <a class="flow-card" href="/facilitator-modules.html">
+            <div class="flow-icon"></div>
+            <div class="flow-title">Modules & materials</div>
+            <div class="flow-desc">Upload slides and worksheets per lesson. Learners open them in the lab and save them for offline.</div>
+            <span class="flow-cta">Open modules →</span>
+        </a>
+    </div>
+</main>
+<div class="toast" id="toast"><span class="toast-icon">✅</span> <span id="toastMsg"></span></div>
+<script src="auth.js"></script>
+<script src="offline.js"></script>
+<script>
+    async function load() {
+        const user = requireAuth('facilitator');
+        populateHeader();
+        document.getElementById('welcome').textContent = `Welcome back, ${user.name} `;
+        if (user.schoolName) document.getElementById('schoolLine').textContent =
+            `${user.schoolName} · everything here works offline and syncs when you have signal.`;
+
+        const [roster, queue, assignments] = await Promise.all([
+            apiFetch('/api/roster'), apiFetch('/api/marking-queue'), apiFetch('/api/assignments')
+        ]);
+        if (roster && !roster.offline && roster.students) {
+            document.getElementById('statLearners').textContent = roster.students.length;
+            await cachePut('roster', roster);   // keep the offline roster fresh
+        } else {
+            const cached = await cacheGet('roster');
+            document.getElementById('statLearners').textContent = cached ? cached.students.length : '—';
+        }
+        document.getElementById('statQueue').textContent = Array.isArray(queue) ? queue.length : '—';
+        document.getElementById('statOpen').textContent = Array.isArray(assignments)
+            ? assignments.filter(a => a.lifecycle === 'open' || a.lifecycle === 'late_window').length : '—';
+    }
+    document.addEventListener('DOMContentLoaded', () => { initTheme(); load(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+node_modules/
+social_coding.db
+uploads/
+.env
+*.log

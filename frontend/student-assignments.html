@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assignments – Social Coding LMS</title>
+    <link rel="stylesheet" href="shared-theme.css">
+    <style>
+        .filter-bar { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1.75rem; }
+        .filter-btn { padding:0.45rem 1rem; border-radius:20px; border:1px solid var(--card-border); background:var(--card-bg); color:var(--text-secondary); font-family:'Inter',sans-serif; font-size:0.82rem; font-weight:600; cursor:pointer; transition:all 0.2s; }
+        .filter-btn.active,.filter-btn:hover { background:rgba(191,247,71,0.15); border-color:var(--accent-purple); color:var(--accent-purple); }
+        .assignment-card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:14px; padding:1.5rem; margin-bottom:1rem; transition:all 0.2s; }
+        .assignment-card:hover { background:var(--card-hover-bg); border-color:rgba(191,247,71,0.3); }
+        .asgn-header { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap; margin-bottom:0.75rem; }
+        .asgn-title  { font-size:1.15rem; font-weight:700; color:var(--text-primary); }
+        .asgn-desc   { font-family:'Inter',sans-serif; font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.85rem; line-height:1.55; }
+        .asgn-meta   { display:flex; gap:1.5rem; flex-wrap:wrap; }
+        .asgn-meta-item { font-family:'Inter',sans-serif; font-size:0.8rem; color:var(--text-secondary); }
+        .asgn-actions { display:flex; gap:0.6rem; margin-top:1.1rem; flex-wrap:wrap; }
+        .file-drop { border:2px dashed var(--input-border); border-radius:12px; padding:2rem; text-align:center; cursor:pointer; transition:all 0.2s; }
+        .file-drop:hover { border-color:var(--accent-purple); background:rgba(191,247,71,0.05); }
+        .file-drop-text { font-family:'Inter',sans-serif; font-size:0.85rem; color:var(--text-secondary); }
+        .file-drop-text strong { color:var(--accent-purple); }
+        #fileInput { display:none; }
+        .file-chosen { font-family:'Inter',sans-serif; font-size:0.82rem; color:var(--accent-green); margin-top:0.5rem; }
+        .empty { text-align:center; padding:3rem 1rem; color:var(--text-secondary); font-family:'Inter',sans-serif; }
+    </style>
+</head>
+<body>
+<div class="bg-glow bg-glow-1"></div><div class="bg-glow bg-glow-2"></div>
+<header>
+    <div class="header-content">
+        <a class="brand" href="/student-dashboard.html"><div class="brand-icon">💻</div><div><div class="brand-text">Social Coding LMS</div><div class="brand-sub">Student Portal</div></div></a>
+        <div class="header-right">
+            <nav class="nav-links">
+                <a class="nav-link"  href="/student-dashboard.html">Home</a>
+                <a class="nav-link active"  href="/student-assignments.html">Assignments</a>
+                <a class="nav-link" href="/student-attendance.html">Attendance</a>
+                <a class="nav-link"  href="/student-marks.html">Marks</a>
+                <a class="nav-link"    href="/student-readings.html">Readings</a>
+            </nav>
+            <label class="theme-toggle"><span id="themeIcon">🌙</span><div class="toggle-track" onclick="toggleTheme()"><div class="toggle-thumb"></div></div></label>
+            <div style="display:flex;align-items:center;gap:0.6rem;"><div class="avatar" id="userAvatar">AD</div><div><div class="user-name" id="userName"></div><div class="user-meta" id="userMeta"></div></div></div>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </div>
+</header>
+<main>
+    <div class="page-header"><div class="page-title">Assignments</div><div class="page-subtitle">View, download, and submit your assignments</div></div>
+    <div class="stats-grid" style="margin-bottom:2rem;">
+        <div class="stat-card"><div class="top-bar top-bar-purple"></div><div class="stat-icon"></div><div class="stat-value" id="cntAll">…</div><div class="stat-label">Total</div></div>
+        <div class="stat-card"><div class="top-bar top-bar-amber"></div><div class="stat-icon"></div><div class="stat-value" id="cntPending">…</div><div class="stat-label">Pending</div></div>
+        <div class="stat-card"><div class="top-bar top-bar-blue"></div><div class="stat-icon"></div><div class="stat-value" id="cntSubmitted">…</div><div class="stat-label">Submitted</div></div>
+        <div class="stat-card"><div class="top-bar top-bar-green"></div><div class="stat-icon"></div><div class="stat-value" id="cntGraded">…</div><div class="stat-label">Graded</div></div>
+    </div>
+    <div class="filter-bar">
+        <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+        <button class="filter-btn" onclick="setFilter('pending',this)">Pending</button>
+        <button class="filter-btn" onclick="setFilter('submitted',this)">Submitted</button>
+        <button class="filter-btn" onclick="setFilter('graded',this)">Graded</button>
+    </div>
+    <div id="assignmentsList"><div class="empty">Loading…</div></div>
+</main>
+
+<!-- Submit Modal -->
+<div class="modal" id="submitModal">
+    <div class="modal-card">
+        <div class="modal-title">Submit Assignment</div>
+        <div class="modal-sub" id="submitModalSub"></div>
+        <div class="form-group">
+            <label class="form-label">Notes <span style="opacity:0.55;">(optional)</span></label>
+            <textarea class="form-textarea" id="submitNotes" rows="3" placeholder="Any notes for your teacher…"></textarea>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Upload File</label>
+            <div class="file-drop" onclick="document.getElementById('fileInput').click()">
+                <div style="font-size:2rem;margin-bottom:0.5rem;"></div>
+                <div class="file-drop-text">Click to choose a file · <strong>Max 50MB</strong></div>
+                <div class="file-chosen" id="fileChosen"></div>
+            </div>
+            <input type="file" id="fileInput" onchange="onFileChosen(this)">
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal('submitModal')">Cancel</button>
+            <button class="btn btn-green" onclick="doSubmit()">Submit</button>
+        </div>
+    </div>
+</div>
+<div class="toast" id="toast"><span class="toast-icon">✅</span> <span id="toastMsg"></span></div>
+<script src="auth.js"></script>
+<script>
+    let assignments = [];
+    let currentFilter = 'all';
+    let currentAssignId = null;
+
+    async function load() {
+        requireAuth('student');
+        populateHeader();
+        const data = await apiFetch('/api/assignments');
+        if (!data) return;
+        assignments = data;
+        document.getElementById('cntAll').textContent       = assignments.length;
+        document.getElementById('cntPending').textContent   = assignments.filter(a=>a.status==='pending').length;
+        document.getElementById('cntSubmitted').textContent = assignments.filter(a=>a.status==='submitted').length;
+        document.getElementById('cntGraded').textContent    = assignments.filter(a=>a.status==='graded').length;
+        render();
+    }
+
+    function setFilter(f, btn) {
+        currentFilter = f;
+        document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        render();
+    }
+
+    const statusMap = { pending:['badge-amber','Pending'], submitted:['badge-blue','Submitted'], graded:['badge-green','Graded'] };
+
+    function render() {
+        const filtered = currentFilter==='all' ? assignments : assignments.filter(a=>a.status===currentFilter);
+        if (!filtered.length) { document.getElementById('assignmentsList').innerHTML='<div class="empty">No assignments in this category.</div>'; return; }
+        const today = new Date();
+        document.getElementById('assignmentsList').innerHTML = filtered.map(a => {
+            const [cls,lbl] = statusMap[a.status]||['badge-blue','Active'];
+            const due = new Date(a.due_date);
+            const overdue = due < today && a.status==='pending';
+            const gradeBlock = a.submission?.score != null ? `<span style="font-family:'Inter';font-size:0.88rem;font-weight:700;color:${a.submission.score>=75?'var(--accent-green)':a.submission.score>=60?'var(--accent-blue)':'var(--accent-amber)'}">${a.submission.score}%</span>` : '';
+            return `<div class="assignment-card">
+                <div class="asgn-header"><div class="asgn-title">${a.module_code?`<span class="module-chip" style="margin-right:0.5rem;">${a.module_code}</span>`:''}${a.title}${a.submission&&a.submission.is_late?` <span class="badge" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.28);color:var(--accent-red);">LATE</span>`:''}</div><span class="badge ${cls}">${lbl}</span></div>
+                <div class="asgn-desc">${a.description||''}</div>
+                <div class="asgn-meta">
+                    <span class="asgn-meta-item">${a.teacher_name}</span>
+                    <span class="asgn-meta-item" style="${overdue?'color:var(--accent-red)':''}">📅 Due ${a.due_date}${overdue?' · OVERDUE':''}</span>
+                    ${gradeBlock?`<span class="asgn-meta-item">${gradeBlock}</span>`:''}
+                </div>
+                <div class="asgn-actions">
+                    ${a.brief_file?`<a class="btn btn-outline btn-sm" style="text-decoration:none;" href="/api/assignments/${a.id}/brief?token=${getToken()}" target="_blank">Download</a>`:''}
+                    ${a.status==='pending' && (a.lifecycle==='open'||a.lifecycle==='late_window')?`<button class="btn btn-primary btn-sm" onclick="openSubmit(${a.id})"> Submit${a.lifecycle==='late_window'?' (late)':''}</button>`:a.status==='pending'&&a.lifecycle==='scheduled'?`<span class="badge badge-blue">Opens ${a.open_date}</span>`:a.status==='pending'?`<span class="badge" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.28);color:var(--accent-red);">Closed ${a.close_date}</span>`:''}
+                    ${a.submission?.file_name?`<a class="btn btn-outline btn-sm" style="text-decoration:none;" href="/api/submissions/${a.submission.id}/file?token=${getToken()}" target="_blank">📎 My submission</a>`:''}
+                    ${(a.status==='submitted') && (a.lifecycle==='open'||a.lifecycle==='late_window')?`<button class="btn btn-outline btn-sm" onclick="openSubmit(${a.id})">ReSubmit</button>`:''}
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function openSubmit(id) {
+        currentAssignId = id;
+        const a = assignments.find(x=>x.id===id);
+        document.getElementById('submitModalSub').textContent = a.title;
+        document.getElementById('fileChosen').textContent = '';
+        document.getElementById('submitNotes').value = '';
+        document.getElementById('submitModal').classList.add('open');
+    }
+
+    function onFileChosen(input) {
+        if (input.files[0]) {
+            if (input.files[0].size > 50*1024*1024) { showToast('File exceeds 50MB limit.','error'); input.value=''; return; }
+            document.getElementById('fileChosen').textContent = '📎 ' + input.files[0].name;
+        }
+    }
+
+    async function doSubmit() {
+        const notes = document.getElementById('submitNotes').value.trim();
+        const file = document.getElementById('fileInput')?.files?.[0];
+        const fd = new FormData();
+        fd.append('notes', notes);
+        if (file) fd.append('file', file);
+        const res = await apiUpload(`/api/assignments/${currentAssignId}/submit`, fd);
+        if (!res) return;
+        if (res.error) { showToast(res.error,'error'); return; }
+        closeModal('submitModal');
+        const fi = document.getElementById('fileInput'); if (fi) fi.value = '';
+        showToast('Assignment submitted successfully!');
+        await load();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { initTheme(); load(); });
+    document.querySelectorAll && document.addEventListener('click', e => {
+        if (e.target.classList.contains('modal')) e.target.classList.remove('open');
+    });
+</script>
+
+
+<nav class="bottom-nav">
+    <a href="/student-dashboard.html" class=""><span class="nav-icon"></span><span class="nav-label">Home</span></a>
+    <a href="/student-modules.html"><span class="nav-icon"></span><span class="nav-label">Modules</span></a>
+    <a href="/student-assignments.html" class="active"><span class="nav-icon"></span><span class="nav-label">Work</span></a>
+    <a href="/student-attendance.html" class="att-btn"><span class="nav-icon"></span><span class="nav-label">Attend</span></a>
+    <a href="/student-marks.html" class=""><span class="nav-icon"></span><span class="nav-label">Marks</span></a>
+    <a href="/student-readings.html" class=""><span class="nav-icon"></span><span class="nav-label">Read</span></a>
+</nav>
+</body>
+</html>

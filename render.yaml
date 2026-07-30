@@ -1,0 +1,17 @@
+# Render blueprint — deploys the LMS as a free web service
+services:
+  - type: web
+    name: social-coding-lms
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: DB_MODE
+        value: turso
+      - key: TURSO_URL
+        sync: false          # paste your libsql:// URL in the Render dashboard
+      - key: TURSO_TOKEN
+        sync: false          # paste your Turso token in the Render dashboard
+      - key: JWT_SECRET
+        generateValue: true

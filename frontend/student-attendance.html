@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance – Social Coding LMS</title>
+    <link rel="stylesheet" href="shared-theme.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        .summary-banner { background:linear-gradient(135deg,rgba(16,185,129,0.15),rgba(5,150,105,0.1)); border:1px solid rgba(16,185,129,0.25); border-radius:16px; padding:1.75rem 2rem; margin-bottom:2rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1.5rem; }
+        [data-theme="light"] .summary-banner { background:rgba(16,185,129,0.07); }
+        .avg-rate-big { font-size:3.5rem; font-weight:700; color:var(--accent-green); line-height:1; }
+        .chart-area   { height:220px; position:relative; }
+        .session-list { display:flex; flex-direction:column; gap:0.55rem; }
+        .session-row  { display:flex; align-items:center; justify-content:space-between; padding:0.8rem 1rem; background:var(--input-bg); border:1px solid var(--divider); border-radius:10px; transition:all 0.2s; }
+        .session-row:hover { border-color:var(--card-border); }
+        .session-date { font-size:0.98rem; font-weight:600; color:var(--text-primary); }
+        .session-type { font-family:'Inter',sans-serif; font-size:0.8rem; color:var(--text-secondary); margin-top:0.15rem; }
+        .session-status { display:inline-flex; align-items:center; gap:0.35rem; padding:0.3rem 0.75rem; border-radius:20px; font-family:'Inter',sans-serif; font-size:0.78rem; font-weight:700; }
+        .s-present   { background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.25); color:var(--accent-green); }
+        .s-absent    { background:rgba(239,68,68,0.1);   border:1px solid rgba(239,68,68,0.2);   color:var(--accent-red); }
+        .s-validated { background:rgba(16,185,129,0.18); border:1px solid rgba(16,185,129,0.3);  color:var(--accent-green); font-size:0.7rem; }
+
+        .checkin-card { display:flex; align-items:center; justify-content:space-between; gap:1.5rem; flex-wrap:wrap;
+            border-radius:16px; padding:1.5rem 2rem; margin-bottom:2rem; }
+        .checkin-card.active { background:linear-gradient(135deg,rgba(16,185,129,0.16),rgba(5,150,105,0.1)); border:1px solid rgba(16,185,129,0.3); }
+        .checkin-card.idle   { background:var(--card-bg); border:1px solid var(--card-border); }
+        .checkin-card.done   { background:linear-gradient(135deg,rgba(59,130,246,0.14),rgba(37,99,235,0.08)); border:1px solid rgba(59,130,246,0.3); }
+        .ci-title { font-weight:700; font-size:1.1rem; }
+        .ci-sub   { font-family:'Inter',sans-serif; font-size:0.85rem; color:var(--text-secondary); margin-top:0.25rem; }
+        .btn-checkin { padding:0.9rem 1.8rem; border:none; border-radius:12px; font-family:'Inter',sans-serif;
+            font-size:0.98rem; font-weight:700; cursor:pointer; white-space:nowrap; box-shadow:var(--shadow-btn);
+            background:linear-gradient(135deg,var(--accent-purple),var(--accent-purple2)); color:var(--on-brand); }
+        .btn-checkin:disabled { opacity:0.45; cursor:not-allowed; box-shadow:none; }
+    </style>
+</head>
+<body>
+<div class="bg-glow bg-glow-1"></div><div class="bg-glow bg-glow-2"></div>
+<header>
+    <div class="header-content">
+        <a class="brand" href="/student-dashboard.html"><div class="brand-icon">💻</div><div><div class="brand-text">Social Coding LMS</div><div class="brand-sub">Student Portal</div></div></a>
+        <div class="header-right">
+            <nav class="nav-links">
+                <a class="nav-link"  href="/student-dashboard.html">Home</a>
+                <a class="nav-link"  href="/student-assignments.html">Assignments</a>
+                <a class="nav-link active" href="/student-attendance.html">Attendance</a>
+                <a class="nav-link"  href="/student-marks.html">Marks</a>
+                <a class="nav-link"    href="/student-readings.html">Readings</a>
+            </nav>
+            <label class="theme-toggle"><span id="themeIcon">🌙</span><div class="toggle-track" onclick="toggleTheme()"><div class="toggle-thumb"></div></div></label>
+            <div style="display:flex;align-items:center;gap:0.6rem;"><div class="avatar" id="userAvatar">AD</div><div><div class="user-name" id="userName"></div><div class="user-meta" id="userMeta"></div></div></div>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </div>
+</header>
+<main>
+    <div class="page-header"><div class="page-title">📅 Attendance History</div><div class="page-subtitle">Your full attendance record</div></div>
+
+    <div class="checkin-card idle" id="checkinCard">
+        <div>
+            <div class="ci-title" id="ciTitle">Checking for an open session…</div>
+            <div class="ci-sub" id="ciSub">Your facilitator hasn't opened a session yet.</div>
+        </div>
+        <button class="btn-checkin" id="ciBtn" disabled onclick="doCheckIn()">Submit Attendance</button>
+    </div>
+
+    <div class="summary-banner">
+        <div>
+            <div class="avg-rate-big" id="avgRate">…</div>
+            <div style="font-family:'Inter',sans-serif;font-size:0.82rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.07em;margin-top:0.3rem;">Average Attendance Rate</div>
+            <div style="font-family:'Inter',sans-serif;font-size:0.88rem;color:var(--text-secondary);margin-top:0.5rem;">Based on <span id="totalSessions">…</span> sessions</div>
+        </div>
+        <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:0;">
+            <div class="stat-card" style="min-width:100px;"><div class="top-bar top-bar-green"></div><div class="stat-icon"></div><div class="stat-value" id="cntPresent">…</div><div class="stat-label">Present</div></div>
+            <div class="stat-card" style="min-width:100px;"><div class="top-bar" style="background:linear-gradient(90deg,var(--accent-red),#dc2626);"></div><div class="stat-icon"></div><div class="stat-value" id="cntAbsent">…</div><div class="stat-label">Absent</div></div>
+            <div class="stat-card" style="min-width:100px;"><div class="top-bar top-bar-amber"></div><div class="stat-icon"></div><div class="stat-value" id="cntValidated">…</div><div class="stat-label">Validated</div></div>
+        </div>
+    </div>
+    <div class="grid-2" style="margin-bottom:2rem;">
+        <div class="card"><div class="section-header"><div><div class="section-title">Monthly Trend</div><div class="section-sub">Attendance % each month</div></div></div><div class="chart-area"><canvas id="trendChart"></canvas></div></div>
+        <div class="card"><div class="section-header"><div><div class="section-title">This Term Breakdown</div></div></div><div class="chart-area"><canvas id="donutChart"></canvas></div></div>
+    </div>
+    <div class="card">
+        <div class="section-header">
+            <div><div class="section-title">Session Log</div></div>
+        </div>
+        <div id="sessionLog"><div style="font-family:'Inter',sans-serif;color:var(--text-secondary);">Loading…</div></div>
+    </div>
+</main>
+<script src="auth.js"></script>
+<script>
+    let activeSession = null;
+    let ciPoll = null;
+
+    function renderCheckinCard() {
+        const card = document.getElementById('checkinCard');
+        const title = document.getElementById('ciTitle');
+        const sub = document.getElementById('ciSub');
+        const btn = document.getElementById('ciBtn');
+
+        if (!activeSession || !activeSession.session) {
+            card.className = 'checkin-card idle';
+            title.textContent = 'No session open right now';
+            sub.textContent = "Your facilitator hasn't opened attendance yet — this button unlocks the moment they do.";
+            btn.disabled = true; btn.textContent = 'Submit Attendance';
+            return;
+        }
+        const s = activeSession.session;
+        if (activeSession.already_checked_in) {
+            card.className = 'checkin-card done';
+            title.textContent = '✅ You are marked present';
+            sub.textContent = `Checked in ${new Date(activeSession.checked_in_at).toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'})} for the ${s.session_type} session.`;
+            btn.disabled = true; btn.textContent = '✓ Checked in';
+            return;
+        }
+        card.className = 'checkin-card active';
+        const timeStr = (s.start_time && s.end_time) ? ` (${s.start_time}–${s.end_time})` : '';
+        title.textContent = ` ${s.session_type[0].toUpperCase()}${s.session_type.slice(1)} session is open${timeStr}`;
+        sub.textContent = `Opened by ${s.facilitator_name}${s.lesson_title? ' · '+s.lesson_title:''} — tap to Submit Attendance. We'll ask permission to use your location to verify you're on-site.`;
+        btn.disabled = false; btn.textContent = 'Submit Attendance';
+    }
+
+    async function pollActiveSession() {
+        const data = await apiFetch('/api/attendance/active-session');
+        if (data && !data.offline && !data.error) { activeSession = data; renderCheckinCard(); }
+    }
+
+    function doCheckIn() {
+        if (!activeSession?.session) return;
+        if (!navigator.geolocation) {
+            showToast('Attendance not captured — your device has no location support.', 'error');
+            return;
+        }
+        const btn = document.getElementById('ciBtn');
+        btn.disabled = true; btn.textContent = 'Getting location…';
+
+        navigator.geolocation.getCurrentPosition(async pos => {
+            const res = await apiFetch('/api/attendance/checkin', { method:'POST', body:{
+                session_id: activeSession.session.id,
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude
+            }});
+            if (!res || res.offline) {
+                showToast('Attendance not captured — no internet connection.', 'error');
+                btn.disabled = false; btn.textContent = 'Submit Attendance';
+                return;
+            }
+            if (res.error) {
+                showToast(res.error, 'error');
+                btn.disabled = false; btn.textContent = 'Submit Attendance';
+                return;
+            }
+            showToast(res.message || 'Checked in!');
+            await pollActiveSession();
+            load();
+        }, () => {
+            // Permission denied or GPS unavailable — no IP fallback, per project decision.
+            showToast('Attendance not captured — location access is required.', 'error');
+            btn.disabled = false; btn.textContent = 'Submit Attendance';
+        }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+    }
+
+    async function load() {
+        requireAuth('student');
+        populateHeader();
+        pollActiveSession();
+        if (ciPoll) clearInterval(ciPoll);
+        ciPoll = setInterval(pollActiveSession, 8000);
+        const data = await apiFetch('/api/attendance/student');
+        if (!data) return;
+
+        const { records, stats } = data;
+        document.getElementById('avgRate').textContent      = stats.average + '%';
+        document.getElementById('totalSessions').textContent= stats.total;
+        document.getElementById('cntPresent').textContent   = stats.present;
+        document.getElementById('cntAbsent').textContent    = stats.absent;
+        document.getElementById('cntValidated').textContent = records.filter(r=>r.validated).length;
+
+        // Session log
+        if (!records.length) {
+            document.getElementById('sessionLog').innerHTML = '<div style="font-family:Inter,sans-serif;color:var(--text-secondary);padding:1rem;">No sessions recorded yet.</div>';
+        } else {
+            document.getElementById('sessionLog').innerHTML = '<div class="session-list">' +
+                records.map(r => {
+                    const cls  = r.status==='present' ? 's-present' : 's-absent';
+                    const lbl  = r.status==='present' ? '✅ Present' : '❌ Absent';
+                    const date = new Date(r.session_date).toLocaleDateString('en-ZA',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+                    const type = r.session_type.charAt(0).toUpperCase()+r.session_type.slice(1);
+                    return `<div class="session-row">
+                        <div><div class="session-date">${date}</div><div class="session-type">🕐 ${type} Session</div></div>
+                        <div style="display:flex;align-items:center;gap:0.5rem;">
+                            <span class="session-status ${cls}">${lbl}</span>
+                            ${r.validated?`<span class="session-status s-validated">✓ Validated</span>`:''}
+                        </div>
+                    </div>`;
+                }).join('') + '</div>';
+        }
+
+        // Charts — group records by month
+        const byMonth = {};
+        records.forEach(r => {
+            const m = r.session_date.slice(0,7);
+            if (!byMonth[m]) byMonth[m] = { present:0, total:0 };
+            byMonth[m].total++;
+            if (r.status==='present') byMonth[m].present++;
+        });
+        const months  = Object.keys(byMonth).sort().slice(-6);
+        const trendData = months.map(m => Math.round(byMonth[m].present/byMonth[m].total*100));
+        const labels    = months.map(m => { const d=new Date(m+'-01'); return d.toLocaleString('default',{month:'short'}); });
+
+        new Chart(document.getElementById('trendChart'), {
+            type:'line',
+            data:{ labels, datasets:[{ label:'Attendance %', data:trendData, borderColor:'#10b981', backgroundColor:'rgba(16,185,129,0.1)', borderWidth:2.5, fill:true, tension:0.4, pointBackgroundColor:'#10b981', pointRadius:4 }] },
+            options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#a1a0a8',font:{family:'Inter',size:11}}}, y:{min:0,max:100,grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#a1a0a8',font:{family:'Inter',size:11},callback:v=>v+'%'}} } }
+        });
+        new Chart(document.getElementById('donutChart'), {
+            type:'doughnut',
+            data:{ labels:['Present','Absent'], datasets:[{ data:[stats.present,stats.absent], backgroundColor:['rgba(16,185,129,0.75)','rgba(239,68,68,0.75)'], borderWidth:0 }] },
+            options:{ responsive:true, maintainAspectRatio:false, cutout:'65%', plugins:{legend:{position:'bottom',labels:{color:'#a1a0a8',font:{family:'Inter',size:11},padding:16}}} }
+        });
+    }
+    document.addEventListener('DOMContentLoaded', () => { initTheme(); load(); });
+</script>
+
+
+<nav class="bottom-nav">
+    <a href="/student-dashboard.html" class=""><span class="nav-icon">🏠</span><span class="nav-label">Home</span></a>
+    <a href="/student-modules.html"><span class="nav-icon">📚</span><span class="nav-label">Modules</span></a>
+    <a href="/student-assignments.html" class=""><span class="nav-icon">📋</span><span class="nav-label">Work</span></a>
+    <a href="/student-attendance.html" class="att-btn active"><span class="nav-icon">📅</span><span class="nav-label">Attend</span></a>
+    <a href="/student-marks.html" class=""><span class="nav-icon">📊</span><span class="nav-label">Marks</span></a>
+    <a href="/student-readings.html" class=""><span class="nav-icon">📚</span><span class="nav-label">Read</span></a>
+</nav>
+</body>
+</html>

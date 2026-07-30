@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Learners – Social Coding LMS</title>
+    <link rel="stylesheet" href="shared-theme.css">
+    <style>
+        .stu-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:1rem; }
+        .stu-card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:14px; padding:1.25rem; cursor:pointer; transition:all 0.2s; }
+        .stu-card:hover { transform:translateY(-2px); border-color:rgba(191,247,71,0.4); }
+        .stu-top { display:flex; align-items:center; gap:0.85rem; margin-bottom:0.8rem; }
+        .stu-name { font-weight:700; font-size:1.05rem; }
+        .stu-num { font-family:'JetBrains Mono',monospace; font-size:0.76rem; color:var(--text-secondary); }
+        .stu-stats { display:flex; gap:1.25rem; font-family:'Inter',sans-serif; font-size:0.8rem; color:var(--text-secondary); }
+        .stu-stats b { color:var(--text-primary); }
+        .chip { display:inline-block; padding:0.2rem 0.6rem; border-radius:7px; font-family:'Inter',sans-serif; font-size:0.7rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; }
+        .chip-studying { background:rgba(191,247,71,0.12); border:1px solid rgba(191,247,71,0.3); color:var(--accent-purple); }
+        [data-theme="light"] .chip-studying { background:rgba(85,131,11,0.09); border-color:rgba(85,131,11,0.3); }
+        .chip-completed { background:rgba(59,130,246,0.12); border:1px solid rgba(59,130,246,0.3); color:#60a5fa; }
+        .chip-withdrawn { background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); color:var(--accent-amber); }
+        .prof-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.4rem 1.25rem; font-family:'Inter',sans-serif; font-size:0.85rem; }
+        .prof-grid dt { color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; margin-top:0.5rem; }
+        .prof-grid dd { color:var(--text-primary); margin:0; }
+        .modal-card.wide { max-width:640px; max-height:88vh; overflow-y:auto; }
+        .prof-section { border-top:1px solid var(--divider); margin-top:1rem; padding-top:0.9rem; }
+        .prof-h { font-family:'Inter',sans-serif; font-weight:800; font-size:0.76rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--accent-purple); margin-bottom:0.5rem; }
+        table.mini { width:100%; border-collapse:collapse; font-family:'Inter',sans-serif; font-size:0.82rem; }
+        table.mini td { padding:0.4rem 0.5rem; border-bottom:1px solid var(--divider); color:var(--text-primary); }
+        .filters { display:flex; gap:0.5rem; margin-bottom:1.25rem; }
+        .f-btn { padding:0.4rem 1rem; border-radius:20px; border:1px solid var(--card-border); background:var(--card-bg); color:var(--text-secondary); font-family:'Inter',sans-serif; font-size:0.82rem; font-weight:600; cursor:pointer; }
+        .f-btn.active { background:rgba(191,247,71,0.15); border-color:var(--accent-purple); color:var(--accent-purple); }
+    </style>
+</head>
+<body>
+<div class="bg-glow bg-glow-1"></div><div class="bg-glow bg-glow-2"></div>
+<header>
+    <div class="header-content">
+        <a class="brand" href="/facilitator-dashboard.html"><div class="brand-icon">&lt;/&gt;</div><div><div class="brand-text">Social Coding LMS</div><div class="brand-sub">Facilitator</div></div></a>
+        <div class="header-right">
+            <nav class="nav-links">
+                <a class="nav-link" href="/facilitator-dashboard.html">Home</a>
+                <a class="nav-link active" href="/facilitator-students.html">My Learners</a>
+                <a class="nav-link" href="/facilitator-attendance.html">Attendance</a>
+                <a class="nav-link" href="/facilitator-assignments.html">Assignments</a>
+                <a class="nav-link" href="/facilitator-modules.html">Modules</a>
+            </nav>
+            <label class="theme-toggle"><span id="themeIcon">🌙</span><div class="toggle-track" onclick="toggleTheme()"><div class="toggle-thumb"></div></div></label>
+            <div style="display:flex;align-items:center;gap:0.6rem;"><div class="avatar" id="userAvatar">SM</div><div><div class="user-name" id="userName"></div><div class="user-meta" id="userMeta"></div></div></div>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </div>
+</header>
+<main>
+    <div class="page-header">
+        <div class="page-title"> My Learners</div>
+        <div class="page-subtitle" id="subLine">Everyone you teach — tap a learner for their full profile, history and results</div>
+    </div>
+    <div class="filters">
+        <button class="f-btn active" onclick="setFilter('all',this)">All</button>
+        <button class="f-btn" onclick="setFilter('studying',this)">Studying</button>
+        <button class="f-btn" onclick="setFilter('completed',this)">Completed</button>
+    </div>
+    <div class="stu-grid" id="grid"><div style="font-family:'Inter',sans-serif;color:var(--text-secondary);">Loading…</div></div>
+</main>
+
+<div class="modal" id="profModal">
+    <div class="modal-card wide" id="profBody"></div>
+</div>
+<div class="toast" id="toast"><span class="toast-icon">✅</span> <span id="toastMsg"></span></div>
+<script src="auth.js"></script>
+<script>
+    let learners = [], filter = 'all';
+    const chip = s => `<span class="chip chip-${s}">${s}</span>`;
+
+    async function load() {
+        requireAuth('facilitator');
+        populateHeader();
+        const data = await apiFetch('/api/facilitator/students');
+        if (!Array.isArray(data)) return;
+        learners = data;
+        const st = data.filter(x=>x.status==='studying').length;
+        document.getElementById('subLine').textContent =
+            `${st} currently studying · ${data.filter(x=>x.status==='completed').length} completed the programme`;
+        render();
+    }
+
+    function setFilter(f2, btn) {
+        filter = f2;
+        document.querySelectorAll('.f-btn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        render();
+    }
+
+    function render() {
+        const rows = filter==='all' ? learners : learners.filter(x=>x.status===filter);
+        document.getElementById('grid').innerHTML = rows.length ? rows.map(u => `
+            <div class="stu-card" onclick="openProfile(${u.id})">
+                <div class="stu-top">
+                    <div class="avatar" style="width:44px;height:44px;">${u.name[0]}${u.surname[0]}</div>
+                    <div style="flex:1;">
+                        <div class="stu-name">${u.name} ${u.surname}</div>
+                        <div class="stu-num">${u.student_number||''}${u.grade?' · '+u.grade:''}</div>
+                    </div>
+                    ${chip(u.status)}
+                </div>
+                <div class="stu-stats">
+                    <span>Attendance <b>${u.attendance_rate==null?'—':u.attendance_rate+'%'}</b></span>
+                    <span>Average <b>${u.avg_pct==null?'—':u.avg_pct+'%'}</b></span>
+                    <span>Modules ✓ <b>${u.modules_completed}</b></span>
+                </div>
+            </div>`).join('')
+        : '<div style="font-family:Inter,sans-serif;color:var(--text-secondary);">No learners in this view.</div>';
+    }
+
+    async function openProfile(id) {
+        const u = await apiFetch(`/api/students/${id}/profile`);
+        if (!u || u.error) { showToast(u?.error||'Could not load profile','error'); return; }
+        document.getElementById('profBody').innerHTML = `
+            <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.5rem;">
+                <div class="avatar" style="width:54px;height:54px;font-size:1.1rem;">${u.name[0]}${u.surname[0]}</div>
+                <div style="flex:1;">
+                    <div class="modal-title" style="margin:0;">${u.name} ${u.surname}</div>
+                    <div class="stu-num">${u.student_number} · ${u.school_name||''}</div>
+                </div>
+                ${chip(u.status)}
+            </div>
+            <div class="prof-section"><div class="prof-h">Personal details</div>
+                <dl class="prof-grid">
+                    <div><dt>Grade</dt><dd>${u.grade||'—'}</dd></div>
+                    <div><dt>Cohort</dt><dd>${u.cohort||'—'}</dd></div>
+                    <div><dt>Date of birth</dt><dd>${u.date_of_birth||'—'}</dd></div>
+                    <div><dt>Gender</dt><dd>${u.gender||'—'}</dd></div>
+                    <div><dt>Guardian</dt><dd>${u.guardian_name||'—'}</dd></div>
+                    <div><dt>Guardian phone</dt><dd>${u.guardian_phone||'—'}</dd></div>
+                    <div><dt>Enrolled</dt><dd>${u.enrolment_date||'—'}</dd></div>
+                    <div><dt>Attendance</dt><dd>${u.attendance.rate==null?'—':u.attendance.rate+'% ('+u.attendance.present+'/'+u.attendance.total+' sessions)'}</dd></div>
+                </dl>
+            </div>
+            <div class="prof-section"><div class="prof-h">Course history</div>
+                ${u.enrollments.length ? `<table class="mini">${u.enrollments.map(e=>`
+                    <tr><td><span class="module-chip">${e.code}</span></td><td>${e.title}</td>
+                        <td>${chip(e.status)}</td>
+                        <td class="stu-num">${e.status==='completed'?('completed '+(e.completed_at||'')):('since '+(e.enrolled_at||''))}</td></tr>`).join('')}</table>`
+                : '<div class="stu-num">No enrollment records.</div>'}
+            </div>
+            <div class="prof-section"><div class="prof-h">Marks ${u.average_pct!=null?`· average ${u.average_pct}%`:''}</div>
+                ${u.marks.length ? `<table class="mini">${u.marks.map(m=>`
+                    <tr><td>${m.module_code?`<span class="module-chip">${m.module_code}</span> `:''}${m.title}${m.is_late?' <span class="chip chip-withdrawn">late</span>':''}</td>
+                        <td style="text-align:right;white-space:nowrap;"><b>${m.score}/${m.total_marks}</b> · ${m.percentage}%</td></tr>
+                    ${m.feedback?`<tr><td colspan="2" class="stu-num" style="padding-top:0;">“${m.feedback}”</td></tr>`:''}`).join('')}</table>`
+                : '<div class="stu-num">No marks yet.</div>'}
+            </div>
+            <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('profModal')">Close</button></div>`;
+        document.getElementById('profModal').classList.add('open');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { initTheme(); load(); });
+    document.addEventListener('click', e => { if (e.target.classList.contains('modal')) e.target.classList.remove('open'); });
+</script>
+</body>
+</html>

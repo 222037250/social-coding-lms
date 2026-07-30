@@ -1,0 +1,10 @@
+{
+  "name": "Social Coding LMS",
+  "short_name": "SC LMS",
+  "start_url": "/login.html",
+  "display": "standalone",
+  "background_color": "#131408",
+  "theme_color": "#bff747",
+  "description": "Offline-first learner management for rural coding programmes.",
+  "icons": []
+}

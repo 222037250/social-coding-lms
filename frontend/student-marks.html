@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Marks – Social Coding LMS</title>
+    <link rel="stylesheet" href="shared-theme.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        .perf-banner { border-radius:18px; padding:2rem; margin-bottom:2rem; display:flex; align-items:center; justify-content:space-between; gap:2rem; flex-wrap:wrap; }
+        .perf-banner.excellent { background:linear-gradient(135deg,rgba(16,185,129,0.15),rgba(5,150,105,0.1)); border:1px solid rgba(16,185,129,0.3); }
+        .perf-banner.good      { background:linear-gradient(135deg,rgba(59,130,246,0.15),rgba(37,99,235,0.1));  border:1px solid rgba(59,130,246,0.3); }
+        .perf-banner.average   { background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(217,119,6,0.1)); border:1px solid rgba(245,158,11,0.3); }
+        .perf-banner.below     { background:linear-gradient(135deg,rgba(239,68,68,0.12),rgba(220,38,38,0.08)); border:1px solid rgba(239,68,68,0.25); }
+        .avg-big.excellent { font-size:4rem; font-weight:700; line-height:1; color:var(--accent-green); }
+        .avg-big.good      { font-size:4rem; font-weight:700; line-height:1; color:var(--accent-blue); }
+        .avg-big.average   { font-size:4rem; font-weight:700; line-height:1; color:var(--accent-amber); }
+        .avg-big.below     { font-size:4rem; font-weight:700; line-height:1; color:var(--accent-red); }
+        .chart-area { height:230px; position:relative; }
+        .marks-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; }
+        .mark-card  { background:var(--card-bg); border:1px solid var(--card-border); border-radius:14px; padding:1.5rem; transition:all 0.2s; }
+        .mark-card:hover { background:var(--card-hover-bg); }
+        .mark-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem; }
+        .mark-title   { font-size:1.05rem; font-weight:700; color:var(--text-primary); }
+        .mark-teacher { font-family:'Inter',sans-serif; font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.75rem; }
+        .mark-score   { font-size:1.8rem; font-weight:700; line-height:1; }
+        .mark-feedback{ font-family:'Inter',sans-serif; font-size:0.85rem; color:var(--text-secondary); line-height:1.5; font-style:italic; border-left:3px solid var(--card-border); padding-left:0.75rem; margin-top:0.75rem; }
+    </style>
+</head>
+<body>
+<div class="bg-glow bg-glow-1"></div><div class="bg-glow bg-glow-2"></div>
+<header>
+    <div class="header-content">
+        <a class="brand" href="/student-dashboard.html"><div class="brand-icon">💻</div><div><div class="brand-text">Social Coding LMS</div><div class="brand-sub">Student Portal</div></div></a>
+        <div class="header-right">
+            <nav class="nav-links">
+                <a class="nav-link"  href="/student-dashboard.html">Home</a>
+                <a class="nav-link"  href="/student-assignments.html">Assignments</a>
+                <a class="nav-link" href="/student-attendance.html">Attendance</a>
+                <a class="nav-link active"  href="/student-marks.html">Marks</a>
+                <a class="nav-link"    href="/student-readings.html">Readings</a>
+            </nav>
+            <label class="theme-toggle"><span id="themeIcon">🌙</span><div class="toggle-track" onclick="toggleTheme()"><div class="toggle-thumb"></div></div></label>
+            <div style="display:flex;align-items:center;gap:0.6rem;"><div class="avatar" id="userAvatar">AD</div><div><div class="user-name" id="userName"></div><div class="user-meta" id="userMeta"></div></div></div>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </div>
+</header>
+<main>
+    <div class="page-header"><div class="page-title"> My Marks</div><div class="page-subtitle">Performance overview</div></div>
+    <div class="perf-banner good" id="perfBanner">
+        <div>
+            <div class="avg-big good" id="avgBig">…</div>
+            <div style="font-family:'Inter',sans-serif;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-secondary);margin-top:0.3rem;">Average Performance</div>
+            <span class="badge badge-blue" id="perfBadge" style="margin-top:0.6rem;">…</span>
+        </div>
+        <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:0;">
+            <div class="stat-card" style="min-width:90px;"><div class="top-bar top-bar-purple"></div><div class="stat-icon">📋</div><div class="stat-value" id="totalGraded">…</div><div class="stat-label">Graded</div></div>
+            <div class="stat-card" style="min-width:90px;"><div class="top-bar top-bar-green"></div><div class="stat-icon">🏆</div><div class="stat-value" id="highScore">…</div><div class="stat-label">Highest</div></div>
+            <div class="stat-card" style="min-width:90px;"><div class="top-bar" style="background:linear-gradient(90deg,var(--accent-red),#dc2626);"></div><div class="stat-icon">📉</div><div class="stat-value" id="lowScore">…</div><div class="stat-label">Lowest</div></div>
+            <div class="stat-card" style="min-width:90px;"><div class="top-bar top-bar-amber"></div><div class="stat-icon">⏳</div><div class="stat-value" id="pendingGrade">…</div><div class="stat-label">Awaiting</div></div>
+        </div>
+    </div>
+    <div class="grid-2" style="margin-bottom:2rem;">
+        <div class="card"><div class="section-header"><div><div class="section-title">Score per Assignment</div></div></div><div class="chart-area"><canvas id="barChart"></canvas></div></div>
+        <div class="card"><div class="section-header"><div><div class="section-title">Grade Distribution</div></div></div><div class="chart-area"><canvas id="donutChart"></canvas></div></div>
+    </div>
+    <div class="card" style="margin-bottom:2rem;">
+        <div class="section-header"><div class="section-title">Graded Assignments</div></div>
+        <div class="marks-grid" id="marksGrid"><div style="font-family:'Inter',sans-serif;color:var(--text-secondary);">Loading…</div></div>
+    </div>
+    <div class="card">
+        <div class="section-header"><div class="section-title">Awaiting Marks</div><div class="section-sub">Submitted but not yet graded</div></div>
+        <div id="pendingList"></div>
+    </div>
+</main>
+<script src="auth.js"></script>
+<script>
+    function scoreClass(s) {
+        if (s>=75) return ['excellent','badge-green','Excellent'];
+        if (s>=60) return ['good',     'badge-blue', 'Good'];
+        if (s>=50) return ['average',  'badge-amber','Average'];
+        return             ['below',   'badge-red',  'Below Pass'];
+    }
+    function scoreColor(s) {
+        return s>=75?'var(--accent-green)':s>=60?'var(--accent-blue)':s>=50?'var(--accent-amber)':'var(--accent-red)';
+    }
+
+    async function load() {
+        requireAuth('student');
+        populateHeader();
+        const data = await apiFetch('/api/marks');
+        if (!data) return;
+        const { graded, pending, average } = data;
+
+        document.getElementById('pendingGrade').textContent = pending.length;
+        document.getElementById('totalGraded').textContent  = graded.length;
+
+        if (graded.length) {
+            const scores = graded.map(m=>m.score);
+            document.getElementById('highScore').textContent = Math.max(...scores)+'%';
+            document.getElementById('lowScore').textContent  = Math.min(...scores)+'%';
+            const [bandClass, badgeClass, bandLabel] = scoreClass(average);
+            document.getElementById('avgBig').textContent    = average+'%';
+            document.getElementById('avgBig').className      = 'avg-big ' + bandClass;
+            document.getElementById('perfBanner').className  = 'perf-banner ' + bandClass;
+            document.getElementById('perfBadge').textContent = bandLabel;
+            document.getElementById('perfBadge').className   = 'badge ' + badgeClass;
+        } else {
+            document.getElementById('avgBig').textContent = 'N/A';
+            document.getElementById('highScore').textContent = '—';
+            document.getElementById('lowScore').textContent  = '—';
+        }
+
+        // Marks grid
+        document.getElementById('marksGrid').innerHTML = graded.length
+            ? graded.map(m => {
+                const [,badgeClass,label] = scoreClass(m.score);
+                return `<div class="mark-card">
+                    <div class="mark-header">
+                        <div><div class="mark-title">${m.title}</div><div class="mark-teacher">👤 ${m.teacher_name}</div></div>
+                        <div style="text-align:right;"><div class="mark-score" style="color:${scoreColor(m.score)}">${m.score}%</div><span class="badge ${badgeClass}" style="margin-top:0.4rem;">${label}</span></div>
+                    </div>
+                    <div class="prog-wrap"><div class="prog-fill" style="width:${m.score}%;background:${scoreColor(m.score)};"></div></div>
+                    ${m.feedback?`<div class="mark-feedback">${m.feedback}</div>`:''}
+                </div>`;
+            }).join('')
+            : '<div style="font-family:Inter,sans-serif;color:var(--text-secondary);grid-column:1/-1;">No marks yet.</div>';
+
+        // Pending list
+        document.getElementById('pendingList').innerHTML = pending.length
+            ? pending.map(p => `<div class="list-item"><div><div class="list-item-title">${p.title}</div><div class="list-item-meta">👤 ${p.teacher_name} · Submitted ${p.submitted_at?.slice(0,10)||''}</div></div><span class="badge badge-amber">⏳ Awaiting</span></div>`).join('')
+            : '<div style="font-family:Inter,sans-serif;color:var(--text-secondary);font-size:0.88rem;padding:0.5rem 0;">No pending submissions.</div>';
+
+        // Charts
+        if (graded.length) {
+            new Chart(document.getElementById('barChart'), {
+                type:'bar',
+                data:{ labels:graded.map(m=>m.title.split(' ').slice(0,3).join(' ')), datasets:[{ data:graded.map(m=>m.score), backgroundColor:graded.map(m=>scoreColor(m.score)+'cc'), borderRadius:6, borderSkipped:false }] },
+                options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{display:false},ticks:{color:'#a1a0a8',font:{family:'Inter',size:10}}}, y:{min:0,max:100,grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#a1a0a8',font:{family:'Inter',size:11},callback:v=>v+'%'}} } }
+            });
+            const bands=[0,0,0,0];
+            graded.forEach(m=>{ if(m.score>=75)bands[0]++; else if(m.score>=60)bands[1]++; else if(m.score>=50)bands[2]++; else bands[3]++; });
+            new Chart(document.getElementById('donutChart'), {
+                type:'doughnut',
+                data:{ labels:['Excellent','Good','Average','Below Pass'], datasets:[{ data:bands, backgroundColor:['rgba(16,185,129,0.75)','rgba(59,130,246,0.75)','rgba(245,158,11,0.75)','rgba(239,68,68,0.75)'], borderWidth:0 }] },
+                options:{ responsive:true, maintainAspectRatio:false, cutout:'65%', plugins:{legend:{position:'bottom',labels:{color:'#a1a0a8',font:{family:'Inter',size:11},padding:14}}} }
+            });
+        }
+    }
+    document.addEventListener('DOMContentLoaded', () => { initTheme(); load(); });
+</script>
+
+
+<nav class="bottom-nav">
+    <a href="/student-dashboard.html" class=""><span class="nav-icon">🏠</span><span class="nav-label">Home</span></a>
+    <a href="/student-modules.html"><span class="nav-icon">📚</span><span class="nav-label">Modules</span></a>
+    <a href="/student-assignments.html" class=""><span class="nav-icon">📋</span><span class="nav-label">Work</span></a>
+    <a href="/student-attendance.html" class="att-btn"><span class="nav-icon">📅</span><span class="nav-label">Attend</span></a>
+    <a href="/student-marks.html" class="active"><span class="nav-icon">📊</span><span class="nav-label">Marks</span></a>
+    <a href="/student-readings.html" class=""><span class="nav-icon">📚</span><span class="nav-label">Read</span></a>
+</nav>
+</body>
+</html>

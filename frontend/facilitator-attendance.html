@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Take Attendance – Social Coding LMS</title>
+    <link rel="stylesheet" href="shared-theme.css">
+    <link rel="manifest" href="manifest.json">
+    <style>
+        .setup-row { display:grid; grid-template-columns:1fr 1fr 1.4fr; gap:0.9rem; }
+        @media (max-width:700px){ .setup-row { grid-template-columns:1fr; } }
+        .q-meta { font-family:'Inter',sans-serif; font-size:0.78rem; color:var(--text-secondary); }
+        .checkin-row { display:flex; align-items:center; gap:1rem; padding:0.7rem 1rem; border-radius:10px;
+            background:var(--input-bg); border:1px solid var(--divider); margin-bottom:0.45rem; flex-wrap:wrap; }
+        .checkin-name { font-weight:600; }
+        .sla-chip { display:inline-flex; align-items:center; gap:0.3rem; padding:0.25rem 0.65rem; border-radius:20px;
+            font-family:'Inter',sans-serif; font-size:0.74rem; font-weight:700; white-space:nowrap; }
+        .sla-ok   { background:rgba(16,185,129,0.14); border:1px solid rgba(16,185,129,0.28); color:var(--accent-green); }
+        .sla-idle { background:rgba(148,163,184,0.12); border:1px solid rgba(148,163,184,0.24); color:var(--text-secondary); }
+        .gps-stats { display:flex; gap:1.25rem; flex-wrap:wrap; margin-bottom:1.25rem; }
+        .gps-stat { font-family:'Inter',sans-serif; font-size:0.85rem; color:var(--text-secondary); }
+        .gps-stat b { color:var(--text-primary); font-size:1.1rem; }
+    </style>
+</head>
+<body>
+<div class="bg-glow bg-glow-1"></div><div class="bg-glow bg-glow-2"></div>
+<header>
+    <div class="header-content">
+        <a class="brand" href="/facilitator-dashboard.html"><div class="brand-icon">&lt;/&gt;</div><div><div class="brand-text">Social Coding LMS</div><div class="brand-sub">Facilitator</div></div></a>
+        <div class="header-right">
+            <nav class="nav-links">
+                <a class="nav-link" href="/facilitator-dashboard.html">Home</a>
+                <a class="nav-link" href="/facilitator-students.html">My Learners</a>
+                <a class="nav-link active" href="/facilitator-attendance.html">Attendance</a>
+                <a class="nav-link" href="/facilitator-assignments.html">Assignments</a>
+                <a class="nav-link" href="/facilitator-modules.html">Modules</a>
+            </nav>
+            <label class="theme-toggle"><span id="themeIcon">🌙</span><div class="toggle-track" onclick="toggleTheme()"><div class="toggle-thumb"></div></div></label>
+            <div style="display:flex;align-items:center;gap:0.6rem;"><div class="avatar" id="userAvatar">SM</div><div><div class="user-name" id="userName"></div><div class="user-meta" id="userMeta"></div></div></div>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </div>
+</header>
+<main>
+    <div class="page-header">
+        <div class="page-title"> Take Attendance</div>
+        <div class="page-subtitle">Open a session and learners check themselves in from their own phones — each check-in is validated against the school's GPS location (within 100m).</div>
+    </div>
+
+    <div class="card" style="margin-bottom:1.5rem;">
+        <div class="section-header"><div>
+            <div class="section-title"> Attendance Session</div>
+            <div class="section-sub">Sessions are always opened for today — pick the time slot that matches the lesson</div>
+        </div></div>
+
+        <div id="gpsIdleView">
+            <div class="setup-row" style="margin-bottom:1rem;">
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Session date</label>
+                    <input type="date" class="form-input" id="gpsDate" disabled>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Time slot</label>
+                    <select class="form-input" id="gpsSlot" onchange="onSlotChange()"></select>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Lesson taught</label>
+                    <select class="form-input" id="gpsLesson"><option value="">— select lesson —</option></select>
+                </div>
+            </div>
+            <div class="setup-row" id="gpsCustomRow" style="display:none;margin-bottom:1rem;">
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Start time</label><input type="time" class="form-input" id="gpsStart" value="08:00"></div>
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">End time</label><input type="time" class="form-input" id="gpsEnd" value="08:50"></div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Session</label>
+                    <select class="form-input" id="gpsType">
+                        <option value="morning">Morning</option>
+                        <option value="afternoon">Afternoon</option>
+                        <option value="evening">Evening</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="openGpsSession()">Open Session</button>
+        </div>
+
+        <div id="gpsActiveView" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1rem;">
+                <div>
+                    <div style="font-weight:700;font-size:1.05rem;" id="gpsActiveTitle"></div>
+                    <div class="q-meta" id="gpsActiveSub"></div>
+                </div>
+                <button class="btn-cancel" onclick="closeGpsSession()">■ Close session</button>
+            </div>
+            <div class="gps-stats">
+                <div class="gps-stat"><b id="gpsCheckedInCount">0</b> checked in</div>
+                <div class="gps-stat"><b id="gpsTotalCount">0</b> learners</div>
+            </div>
+            <div id="gpsCheckins"><div class="q-meta">Waiting for learners to check in…</div></div>
+        </div>
+    </div>
+</main>
+<div class="toast" id="toast"><span class="toast-icon">✅</span> <span id="toastMsg"></span></div>
+<script src="auth.js"></script>
+<script>
+    // ── GPS self check-in session ───────────────────────────────────────────
+    const TIME_SLOTS = [
+        { start:'08:00', end:'08:50', type:'morning' },
+        { start:'08:50', end:'09:40', type:'morning' },
+        { start:'09:40', end:'10:30', type:'morning' },
+        { start:'10:50', end:'11:40', type:'morning' },
+        { start:'11:40', end:'12:30', type:'afternoon' },
+        { start:'12:30', end:'13:20', type:'afternoon' },
+        { start:'13:20', end:'14:10', type:'afternoon' },
+        { start:'14:10', end:'15:00', type:'afternoon' },
+    ];
+    let activeGpsSession = null;
+    let gpsPoll = null;
+
+    function populateSlots() {
+        const sel = document.getElementById('gpsSlot');
+        sel.innerHTML = TIME_SLOTS.map((s,i) => `<option value="${i}">${s.start} – ${s.end}</option>`).join('')
+            + `<option value="custom">Custom time…</option>`;
+    }
+    function onSlotChange() {
+        document.getElementById('gpsCustomRow').style.display =
+            document.getElementById('gpsSlot').value === 'custom' ? 'grid' : 'none';
+    }
+
+    function renderGpsIdle() {
+        document.getElementById('gpsIdleView').style.display = 'block';
+        document.getElementById('gpsActiveView').style.display = 'none';
+    }
+
+    function renderGpsActive(data) {
+        const s = data.session;
+        activeGpsSession = s;
+        document.getElementById('gpsIdleView').style.display = 'none';
+        document.getElementById('gpsActiveView').style.display = 'block';
+        const timeStr = (s.start_time && s.end_time) ? ` · ${s.start_time}–${s.end_time}` : '';
+        document.getElementById('gpsActiveTitle').textContent =
+            `📍 ${s.session_type[0].toUpperCase()}${s.session_type.slice(1)} session open${timeStr}`;
+        document.getElementById('gpsActiveSub').textContent =
+            'Learners can check in now from their Attendance page — close the session once the slot ends.';
+
+        const roster = data.roster || [];
+        document.getElementById('gpsCheckedInCount').textContent = data.checked_in ?? roster.filter(r=>r.status==='present').length;
+        document.getElementById('gpsTotalCount').textContent = data.total ?? roster.length;
+
+        document.getElementById('gpsCheckins').innerHTML = roster.length ? roster.map(r => {
+            const chip = r.status === 'present'
+                ? `<span class="sla-chip sla-ok">✓ Checked in${r.checked_in_at ? ' ' + new Date(r.checked_in_at).toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'}) : ''}${r.distance_meters!=null ? ' · ' + Math.round(r.distance_meters) + 'm from school' : ''}</span>`
+                : `<span class="sla-chip sla-idle">⏳ Not checked in yet</span>`;
+            return `<div class="checkin-row">
+                <div style="flex:1;min-width:180px;">
+                    <div class="checkin-name">${r.name} ${r.surname}${r.student_number?' <span class="q-meta">· '+r.student_number+'</span>':''}</div>
+                </div>
+                ${chip}
+            </div>`;
+        }).join('') : '<div class="q-meta">No learners on the roster for this school yet.</div>';
+    }
+
+    async function openGpsSession() {
+        const slotVal = document.getElementById('gpsSlot').value;
+        let start_time, end_time, session_type;
+        if (slotVal === 'custom') {
+            start_time = document.getElementById('gpsStart').value;
+            end_time   = document.getElementById('gpsEnd').value;
+            session_type = document.getElementById('gpsType').value;
+        } else {
+            const slot = TIME_SLOTS[Number(slotVal)];
+            start_time = slot.start; end_time = slot.end; session_type = slot.type;
+        }
+        const lesson_id = document.getElementById('gpsLesson').value || null;
+
+        const res = await apiFetch('/api/sessions/start', {
+            method:'POST', body:{ session_type, lesson_id, start_time, end_time }
+        });
+        if (!res || res.offline) { showToast('Could not reach the server — try again once you have signal.','error'); return; }
+        if (res.error) { showToast(res.error,'error'); return; }
+        showToast(res.message || 'Session opened — learners can now check in');
+        await pollGpsCurrent();
+    }
+
+    async function closeGpsSession() {
+        if (!activeGpsSession) return;
+        if (!confirm('Close this check-in session? Anyone who has not checked in will be marked absent.')) return;
+        const res = await apiFetch(`/api/sessions/${activeGpsSession.id}/close`, { method:'POST' });
+        if (res?.error) { showToast(res.error,'error'); return; }
+        showToast(res.message || 'Session closed');
+        activeGpsSession = null;
+        renderGpsIdle();
+    }
+
+    async function pollGpsCurrent() {
+        const data = await apiFetch('/api/sessions/current');
+        if (!data || data.offline || data.error) return;
+        if (!data.session) { renderGpsIdle(); return; }
+        renderGpsActive(data);
+    }
+
+    async function load() {
+        requireAuth('facilitator');
+        populateHeader();
+        document.getElementById('gpsDate').value = new Date().toISOString().slice(0,10);
+        populateSlots();
+
+        const roster = await apiFetch('/api/roster');
+        if (roster && Array.isArray(roster.lessons)) {
+            const gpsSel = document.getElementById('gpsLesson');
+            roster.lessons.forEach(l => {
+                const o = document.createElement('option');
+                o.value = l.id; o.textContent = `${l.code} · ${l.title}`;
+                gpsSel.appendChild(o);
+            });
+        }
+
+        await pollGpsCurrent();
+        gpsPoll = setInterval(pollGpsCurrent, 5000);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { initTheme(); load(); });
+</script>
+</body>
+</html>
