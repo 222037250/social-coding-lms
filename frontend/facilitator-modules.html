@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modules – Social Coding LMS</title>
+    <link rel="stylesheet" href="shared-theme.css">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <meta name="theme-color" content="#bff747">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        .mod-card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:14px; padding:1.5rem; margin-bottom:1.25rem; }
+        .mod-head { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:0.75rem; }
+        .mod-title { font-size:1.25rem; font-weight:700; margin-top:0.35rem; }
+        .lesson-block { border-top:1px solid var(--divider); padding:0.9rem 0 0.4rem; margin-top:0.75rem; }
+        .lesson-title { font-weight:600; margin-bottom:0.5rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+        .kind-icon { width:38px; height:38px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; background:rgba(191,247,71,0.1); flex-shrink:0; }
+    </style>
+</head>
+<body>
+<div class="bg-glow bg-glow-1"></div><div class="bg-glow bg-glow-2"></div>
+<header>
+    <div class="header-content">
+        <a class="brand" href="/facilitator-dashboard.html"><div class="brand-icon"><img src="/icons/logo-mark-white.png" alt="Social Coding"></div><div><div class="brand-text">Social Coding LMS</div><div class="brand-sub">Facilitator</div></div></a>
+        <div class="header-right">
+            <nav class="nav-links">
+                <a class="nav-link" href="/facilitator-dashboard.html">Home</a>
+                <a class="nav-link" href="/facilitator-students.html">Learners</a>
+                <a class="nav-link" href="/facilitator-attendance.html">Attendance</a>
+                <a class="nav-link" href="/facilitator-assignments.html">Assignments</a>
+                <a class="nav-link active" href="/facilitator-modules.html">Modules</a>
+            </nav>
+            <label class="theme-toggle"><span id="themeIcon" class="theme-label">Dark</span><div class="toggle-track" onclick="toggleTheme()"><div class="toggle-thumb"></div></div></label>
+            <div style="display:flex;align-items:center;gap:0.6rem;"><div class="avatar" id="userAvatar">SM</div><div><div class="user-name" id="userName"></div><div class="user-meta" id="userMeta"></div></div></div>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </div>
+</header>
+<main>
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:1rem;">
+        <div>
+            <div class="page-title">Modules & Materials</div>
+            <div class="page-subtitle">Upload slides and worksheets — learners open them during sessions and can save them for offline</div>
+        </div>
+        <button class="btn btn-primary" onclick="document.getElementById('modModal').classList.add('open')">New module</button>
+    </div>
+    <div class="filter-bar">
+        <select class="filter-select" id="modFilter" onchange="renderModules()">
+            <option value="">All courses</option>
+        </select>
+        <input class="filter-search" id="matSearch" placeholder="Search materials…" oninput="renderModules()">
+        <span class="filter-count" id="modCount"></span>
+    </div>
+    <div id="modules"><div style="font-family:'Inter',sans-serif;color:var(--text-secondary);">Loading…</div></div>
+</main>
+
+<div class="modal" id="modModal">
+    <div class="modal-card">
+        <div class="modal-title">New module</div>
+        <div class="form-group"><label class="form-label">Code</label><input class="form-input" id="mCode" placeholder="SC104"></div>
+        <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="mTitle" placeholder="Databases for Beginners"></div>
+        <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="mDesc" rows="2"></textarea></div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal('modModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="createModule()">Create module</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="matModal">
+    <div class="modal-card">
+        <div class="modal-title">Upload material</div>
+        <div class="modal-sub" id="matSub"></div>
+        <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="matTitle" placeholder="Week 3 Slides — Functions"></div>
+        <div class="form-group"><label class="form-label">Type</label>
+            <select class="form-input" id="matKind">
+                <option value="slides">Slides</option><option value="document">Document / worksheet</option>
+                <option value="link">Web link</option><option value="video">Video</option>
+            </select></div>
+        <div class="form-group"><label class="form-label">File (slides, PDF, worksheet…)</label><input type="file" class="form-input" id="matFile"></div>
+        <div class="form-group"><label class="form-label">…or link URL</label><input class="form-input" id="matUrl" placeholder="https://"></div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal('matModal')">Cancel</button>
+            <button class="btn btn-green" onclick="uploadMaterial()">Upload</button>
+        </div>
+    </div>
+</div>
+<nav class="bottom-nav">
+    <a href="/facilitator-dashboard.html"><span class="nav-label">Home</span></a>
+    <a href="/facilitator-students.html"><span class="nav-label">Learners</span></a>
+    <a href="/facilitator-attendance.html"><span class="nav-label">Attend</span></a>
+    <a href="/facilitator-assignments.html"><span class="nav-label">Work</span></a>
+    <a href="/facilitator-modules.html" class="active"><span class="nav-label">Modules</span></a>
+</nav>
+<div class="toast" id="toast"><span id="toastMsg"></span></div>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script>
+   let currentLessonId = null;
+
+    let allMods = [];
+    function visibleMods() {
+        const code = document.getElementById('modFilter')?.value || '';
+        const q = (document.getElementById('matSearch')?.value || '').trim().toLowerCase();
+        let mods = allMods.filter(m => !code || m.code === code);
+        if (q) mods = mods.map(m => ({ ...m, lessons: m.lessons.map(l => ({ ...l,
+                    materials: l.materials.filter(mat => (mat.title||'').toLowerCase().includes(q)) }))
+                    .filter(l => l.materials.length) })).filter(m => m.lessons.length);
+        const n = mods.reduce((t,m)=>t+m.lessons.reduce((x,l)=>x+l.materials.length,0),0);
+        const c = document.getElementById('modCount');
+        if (c) c.textContent = `${mods.length} course${mods.length===1?'':'s'} · ${n} material${n===1?'':'s'}`;
+        return mods;
+    }
+    function renderModules() { paint(); }
+
+    function paint() {
+        const KIND = { slides:'Slides', document:'Document', link:'Link', video:'Video' };
+        document.getElementById('modules').innerHTML = visibleMods().map(m => `
+            <div class="mod-card">
+                <div class="mod-head">
+                    <div>
+                        <span class="module-chip">${m.code}</span>
+                        <div class="mod-title">${m.title}</div>
+                        <div style="font-family:'Inter',sans-serif;font-size:0.85rem;color:var(--text-secondary);">${m.description||''}</div>
+                    </div>
+                    <button class="btn btn-sm" onclick="addLesson(${m.id})">Add lesson</button>
+                </div>
+                <div class="table-wrap" style="margin-top:0.9rem;">
+                    <table class="data">
+                        <thead><tr><th>Lesson</th><th>Material</th><th>Type</th><th class="num">Size</th><th>Uploaded by</th><th></th></tr></thead>
+                        <tbody>
+                        ${m.lessons.flatMap(l => l.materials.length
+                            ? l.materials.map(mat => `
+                                <tr>
+                                    <td class="muted">${l.lesson_order}. ${l.title}</td>
+                                    <td class="strong">${mat.title}</td>
+                                    <td>${KIND[mat.kind]||mat.kind}</td>
+                                    <td class="num">${mat.file_size_kb?mat.file_size_kb+' KB':'—'}</td>
+                                    <td class="muted">${mat.uploaded_by_name||''}</td>
+                                    <td class="num"><div class="row-actions">
+                                        <a class="btn btn-sm" style="text-decoration:none;" href="${apiUrl('/api/materials/'+mat.id+'/download?token='+getToken())}" target="_blank">Open</a>
+                                        <button class="btn btn-sm btn-primary" onclick="openMat(${l.id}, '${(m.code+' · '+l.title).replace(/'/g,"\\'")}')">Upload</button>
+                                    </div></td>
+                                </tr>`)
+                            : [`<tr><td class="muted">${l.lesson_order}. ${l.title}</td><td colspan="4" class="muted">No materials yet</td>
+                                <td class="num"><button class="btn btn-sm btn-primary" onclick="openMat(${l.id}, '${(m.code+' · '+l.title).replace(/'/g,"\\'")}')">Upload</button></td></tr>`]
+                        ).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>`).join('');
+    }
+
+    function buildModFilter() {
+        const sel = document.getElementById('modFilter');
+        if (!sel || sel.options.length > 1) return;
+        sel.innerHTML = '<option value="">All courses</option>' +
+            allMods.map(m => `<option value="${m.code}">${m.code} · ${m.title}</option>`).join('');
+    }
+
+    async function load() {
+        requireAuth('facilitator');
+        populateHeader();
+        const mods = await apiFetch('/api/modules');
+        allMods = Array.isArray(mods) ? mods : [];
+        if (!Array.isArray(mods)) return;
+        buildModFilter();
+        paint();
+    }
+
+    async function createModule() {
+        const res = await apiFetch('/api/modules', { method:'POST', body:{
+            code: document.getElementById('mCode').value.trim(),
+            title: document.getElementById('mTitle').value.trim(),
+            description: document.getElementById('mDesc').value.trim() } });
+        if (res?.error) { showToast(res.error,'error'); return; }
+        closeModal('modModal'); showToast('Module created'); load();
+    }
+
+    async function addLesson(moduleId) {
+        const title = prompt('Lesson title:');
+        if (!title) return;
+        const res = await apiFetch(`/api/modules/${moduleId}/lessons`, { method:'POST', body:{ title } });
+        if (res?.error) { showToast(res.error,'error'); return; }
+        showToast('Lesson added'); load();
+    }
+
+    function openMat(lessonId, label) {
+        currentLessonId = lessonId;
+        document.getElementById('matSub').textContent = label;
+        document.getElementById('matTitle').value = '';
+        document.getElementById('matUrl').value = '';
+        document.getElementById('matFile').value = '';
+        document.getElementById('matModal').classList.add('open');
+    }
+
+    async function uploadMaterial() {
+        const fd = new FormData();
+        fd.append('title', document.getElementById('matTitle').value.trim());
+        fd.append('kind', document.getElementById('matKind').value);
+        const f = document.getElementById('matFile').files[0];
+        if (f) fd.append('file', f);
+        const url = document.getElementById('matUrl').value.trim();
+        if (url) fd.append('url', url);
+        if (!fd.get('title')) { showToast('Give the material a title','error'); return; }
+        const res = await apiUpload(`/api/lessons/${currentLessonId}/materials`, fd);
+        if (res?.error) { showToast(res.error,'error'); return; }
+        closeModal('matModal'); showToast('Material uploaded — learners can now open it'); load();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { initTheme(); load(); });
+    document.addEventListener('click', e => { if (e.target.classList.contains('modal')) e.target.classList.remove('open'); });
+</script>
+</body>
+</html>

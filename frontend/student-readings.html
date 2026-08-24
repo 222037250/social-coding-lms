@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Readings – Social Coding LMS</title>
+    <link rel="stylesheet" href="shared-theme.css">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <meta name="theme-color" content="#bff747">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        .filter-bar { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1.75rem; }
+        .filter-btn { padding:0.45rem 1rem; border-radius:20px; border:1px solid var(--card-border); background:var(--card-bg); color:var(--text-secondary); font-family:'Inter',sans-serif; font-size:0.82rem; font-weight:600; cursor:pointer; transition:all 0.2s; }
+        .filter-btn.active, .filter-btn:hover { background:rgba(59,130,246,0.15); border-color:var(--accent-blue); color:var(--accent-blue); }
+
+        .reading-card {
+            background:var(--card-bg);
+            border:1px solid var(--card-border);
+            border-radius:14px;
+            padding:1.5rem;
+            margin-bottom:1rem;
+            display:flex;
+            align-items:flex-start;
+            justify-content:space-between;
+            gap:1.5rem;
+            flex-wrap:wrap;
+            transition:all 0.2s;
+        }
+        .reading-card:hover { background:var(--card-hover-bg); border-color:rgba(59,130,246,0.3); }
+
+        .reading-icon {
+            width:52px; height:52px;
+            border-radius:12px;
+            display:flex; align-items:center; justify-content:center;
+            font-size:1.5rem; flex-shrink:0;
+        }
+        .icon-file { background:rgba(16,185,129,0.15); }
+        .icon-link { background:rgba(59,130,246,0.15); }
+
+        .reading-info { flex:1; min-width:200px; }
+        .reading-title { font-size:1.1rem; font-weight:700; color:var(--text-primary); margin-bottom:0.3rem; }
+        .reading-desc  { font-family:'Inter',sans-serif; font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.6rem; line-height:1.5; }
+        .reading-meta  { display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center; }
+
+        .reading-actions { display:flex; flex-direction:column; gap:0.6rem; align-items:flex-end; flex-shrink:0; }
+
+        .btn-download {
+            display:inline-flex; align-items:center; gap:0.4rem;
+            padding:0.7rem 1.4rem;
+            background:linear-gradient(135deg, var(--accent-green), #059669);
+            color:white; border:none; border-radius:10px;
+            font-family:'Inter',sans-serif; font-size:0.9rem; font-weight:600;
+            cursor:pointer; text-decoration:none;
+            transition:all 0.2s; box-shadow:0 4px 16px rgba(16,185,129,0.3);
+            white-space:nowrap;
+        }
+        .btn-download:hover { opacity:0.88; transform:translateY(-1px); }
+
+        .btn-open {
+            display:inline-flex; align-items:center; gap:0.4rem;
+            padding:0.7rem 1.4rem;
+            background:linear-gradient(135deg, var(--accent-blue), #2563eb);
+            color:white; border:none; border-radius:10px;
+            font-family:'Inter',sans-serif; font-size:0.9rem; font-weight:600;
+            cursor:pointer; text-decoration:none;
+            transition:all 0.2s; box-shadow:0 4px 16px rgba(59,130,246,0.3);
+            white-space:nowrap;
+        }
+        .btn-open:hover { opacity:0.88; transform:translateY(-1px); }
+
+        .downloaded-badge {
+            font-family:'Inter',sans-serif; font-size:0.75rem; color:var(--accent-green);
+            display:none;
+        }
+        .downloaded-badge.show { display:block; }
+
+        .empty { text-align:center; padding:4rem 1rem; }
+        .empty-icon { font-size:3rem; margin-bottom:1rem; opacity:0.4; }
+
+        /* Category color coding */
+        .cat-programming    { background:rgba(191,247,71,0.12); color:var(--accent-purple); border:1px solid rgba(191,247,71,0.22); }
+        .cat-web            { background:rgba(59,130,246,0.12);  color:var(--accent-blue);   border:1px solid rgba(59,130,246,0.22); }
+        .cat-cyber          { background:rgba(239,68,68,0.1);    color:var(--accent-red);    border:1px solid rgba(239,68,68,0.2); }
+        .cat-digital        { background:rgba(245,158,11,0.12);  color:var(--accent-amber);  border:1px solid rgba(245,158,11,0.22); }
+        .cat-career         { background:rgba(16,185,129,0.12);  color:var(--accent-green);  border:1px solid rgba(16,185,129,0.22); }
+        .cat-other          { background:rgba(100,116,139,0.12); color:#94a3b8;              border:1px solid rgba(100,116,139,0.22); }
+    </style>
+</head>
+<body>
+<div class="bg-glow bg-glow-1"></div>
+<div class="bg-glow bg-glow-2"></div>
+
+<header>
+    <div class="header-content">
+        <a class="brand" href="/student-dashboard.html">
+            <div class="brand-icon"><img src="/icons/logo-mark-white.png" alt="Social Coding"></div>
+            <div><div class="brand-text">Social Coding LMS</div><div class="brand-sub">Student Portal</div></div>
+        </a>
+        <div class="header-right">
+            <nav class="nav-links">
+                <a class="nav-link" href="/student-dashboard.html">Home</a>
+                <a class="nav-link" href="/student-modules.html">Modules</a>
+                <a class="nav-link" href="/student-assignments.html">Assignments</a>
+                <a class="nav-link" href="/student-attendance.html">Attendance</a>
+                <a class="nav-link" href="/student-marks.html">Marks</a>
+                <a class="nav-link active" href="/student-readings.html">Readings</a>
+            </nav>
+            <label class="theme-toggle">
+                <span id="themeIcon" class="theme-label">Dark</span>
+                <div class="toggle-track" onclick="toggleTheme()"><div class="toggle-thumb"></div></div>
+            </label>
+            <div style="display:flex;align-items:center;gap:0.6rem;">
+                <div class="avatar" id="userAvatar">AD</div>
+                <div><div class="user-name" id="userName"></div><div class="user-meta" id="userMeta"></div></div>
+            </div>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </div>
+</header>
+
+<main>
+    <div class="page-header">
+        <div class="page-title">Recommended Readings</div>
+        <div class="page-subtitle">Learning materials shared by your administrator</div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid" style="margin-bottom:2rem;">
+        <div class="stat-card"><div class="top-bar top-bar-blue"></div><div class="stat-value" id="totalCount">…</div><div class="stat-label">Total Materials</div></div>
+        <div class="stat-card"><div class="top-bar top-bar-green"></div><div class="stat-value" id="fileCount">…</div><div class="stat-label">Files to Download</div></div>
+        <div class="stat-card"><div class="top-bar top-bar-blue"></div><div class="stat-value" id="linkCount">…</div><div class="stat-label">Links to Open</div></div>
+        <div class="stat-card"><div class="top-bar top-bar-purple"></div><div class="stat-value" id="catCount">…</div><div class="stat-label">Categories</div></div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-bar" id="filterBar">
+        <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+        <!-- Category buttons injected by JS -->
+    </div>
+
+    <!-- Readings list -->
+    <div id="readingsList">
+        <div style="font-family:'Inter',sans-serif;color:var(--text-secondary);padding:2rem 0;">Loading readings…</div>
+    </div>
+</main>
+
+<!-- Bottom nav (mobile) -->
+<nav class="bottom-nav">
+    <a href="/student-dashboard.html"><span class="nav-label">Home</span></a>
+    <a href="/student-modules.html"><span class="nav-label">Modules</span></a>
+    <a href="/student-assignments.html"><span class="nav-label">Work</span></a>
+    <a href="/student-attendance.html" class="att-btn"><span class="nav-label">Attend</span></a>
+    <a href="/student-marks.html"><span class="nav-label">Marks</span></a>
+    <a href="/student-readings.html" class="active"><span class="nav-label">Read</span></a>
+</nav>
+
+<div class="toast" id="toast"><span id="toastMsg"></span></div>
+
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script>
+   let allReadings = [];
+    let currentFilter = 'all';
+
+    // Map category name to CSS class
+    function catClass(cat) {
+        const map = {
+            'Programming':     'cat-programming',
+            'Web Development': 'cat-web',
+            'Cyber Safety':    'cat-cyber',
+            'Digital Literacy':'cat-digital',
+            'Career Skills':   'cat-career',
+        };
+        return map[cat] || 'cat-other';
+    }
+
+    function setFilter(cat, btn) {
+        currentFilter = cat;
+        document.querySelectorAll('.filter-btn').forEach(b =>b.classList.remove('active'));
+        btn.classList.add('active');
+        render();
+    }
+
+    function render() {
+        const filtered = currentFilter === 'all'
+            ? allReadings
+            : allReadings.filter(r =>r.category === currentFilter);
+
+        if (!filtered.length) {
+            document.getElementById('readingsList').innerHTML = `
+                <div class="empty">
+                    <div class="empty-icon"></div>
+                    <div style="font-family:'Inter',sans-serif;color:var(--text-secondary);">
+                       No readings in this category yet.
+                    </div>
+                </div>`;
+            return;
+        }
+
+        const token = getToken();
+
+        document.getElementById('readingsList').innerHTML = `<div class="table-wrap"><table class="data">
+            <thead><tr><th>Title</th><th>Category</th><th>Description</th><th>Added by</th><th></th></tr></thead>
+            <tbody>${filtered.map(r => `
+                <tr>
+                    <td class="strong">${r.title}</td>
+                    <td class="mono">${r.category}</td>
+                    <td class="muted">${(r.description||'').slice(0,80)}</td>
+                    <td class="muted">${r.added_by_name||''}</td>
+                    <td class="num"><a class="btn btn-sm btn-primary" style="text-decoration:none;" href="${apiUrl('/api/readings/'+r.id+'/download?token='+token)}" target="_blank">${r.file_name?'Download':'Open'}</a></td>
+                </tr>`).join('')}</tbody></table></div>`;
+
+        // Restore downloaded states from localStorage
+        filtered.forEach(r => {
+            if (localStorage.getItem('read_' + r.id)) {
+                const badge = document.getElementById('dlBadge-' + r.id);
+                if (badge) badge.classList.add('show');
+            }
+        });
+    }
+
+    function markDownloaded(id, isFile) {
+        localStorage.setItem('read_' + id, '1');
+        setTimeout(() => {
+            const badge = document.getElementById('dlBadge-' + id);
+            if (badge) badge.classList.add('show');
+        }, 800);
+        if (isFile) showToast('Downloading file…');
+        else showToast('Opening link in new tab…');
+    }
+
+    async function load() {
+        requireAuth('student');
+        populateHeader();
+
+        const readings = await apiFetch('/api/readings');
+        if (!readings) return;
+
+        allReadings = readings;
+
+        // Stats
+        const files  = readings.filter(r =>r.file_name && r.file_name.length > 0).length;
+        const links  = readings.filter(r =>r.url && r.url.length > 0).length;
+        const cats   = new Set(readings.map(r =>r.category)).size;
+        document.getElementById('totalCount').textContent = readings.length;
+        document.getElementById('fileCount').textContent  = files;
+        document.getElementById('linkCount').textContent  = links;
+        document.getElementById('catCount').textContent   = cats;
+
+        // Build category filter buttons
+        const categories = [...new Set(readings.map(r =>r.category))];
+        const filterBar = document.getElementById('filterBar');
+        categories.forEach(cat => {
+            const btn = document.createElement('button');
+            btn.className = 'filter-btn';
+            btn.textContent = cat;
+            btn.onclick = () =>setFilter(cat, btn);
+            filterBar.appendChild(btn);
+        });
+
+        render();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { initTheme(); load(); });
+</script>
+</body>
+</html>

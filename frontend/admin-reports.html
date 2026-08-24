@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Impact Report – Social Coding LMS</title>
+    <link rel="stylesheet" href="shared-theme.css">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <meta name="theme-color" content="#bff747">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+       table { width:100%; border-collapse:collapse; font-family:'Inter',sans-serif; font-size:0.85rem; }
+        th { text-align:left; padding:0.7rem 0.9rem; color:var(--text-secondary); font-weight:700; font-size:0.74rem;
+             text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid var(--card-border); }
+        td { padding:0.7rem 0.9rem; border-bottom:1px solid var(--divider); color:var(--text-primary); }
+        .num { text-align:right; font-variant-numeric:tabular-nums; }
+        .report-head { display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:1rem; }
+        .range-row { display:flex; gap:0.75rem; align-items:flex-end; flex-wrap:wrap; }
+        @media print {
+            header, .bottom-nav, .no-print, .bg-glow { display:none !important; }
+            body { background:#fff !important; }
+            .card, .stat-card { border:1px solid #ddd !important; background:#fff !important; box-shadow:none !important; }
+            * { color:#111 !important; }
+        }
+    </style>
+</head>
+<body>
+<div class="bg-glow bg-glow-1"></div><div class="bg-glow bg-glow-2"></div>
+<header>
+    <div class="header-content">
+        <a class="brand" href="/admin-dashboard.html"><div class="brand-icon"><img src="/icons/logo-mark-white.png" alt="Social Coding"></div><div><div class="brand-text">Social Coding LMS</div><div class="brand-sub">Head Office</div></div></a>
+        <div class="header-right">
+            <nav class="nav-links">
+                <a class="nav-link" href="/admin-dashboard.html">Dashboard</a>
+                <a class="nav-link active" href="/admin-reports.html">Impact Report</a>
+            </nav>
+            <label class="theme-toggle"><span id="themeIcon" class="theme-label">Dark</span><div class="toggle-track" onclick="toggleTheme()"><div class="toggle-thumb"></div></div></label>
+            <div style="display:flex;align-items:center;gap:0.6rem;"><div class="avatar" id="userAvatar">SA</div><div><div class="user-name" id="userName"></div><div class="user-meta" id="userMeta"></div></div></div>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </div>
+</header>
+<main>
+    <div class="page-header report-head">
+        <div>
+            <div class="page-title">Funder Impact Report</div>
+            <div class="page-subtitle" id="genLine">Programme-wide, compiled automatically from synced field data</div>
+        </div>
+        <div class="range-row no-print">
+            <div class="form-group" style="margin:0;"><label class="form-label">From</label><input type="date" class="form-input" id="fromDate"></div>
+            <div class="form-group" style="margin:0;"><label class="form-label">To</label><input type="date" class="form-input" id="toDate"></div>
+            <button class="btn btn-primary" onclick="load()">Apply</button>
+            <button class="btn btn-green" onclick="window.print()">Export PDF</button>
+        </div>
+    </div>
+
+    <div class="stats-grid" style="margin-bottom:2rem;">
+        <div class="stat-card"><div class="top-bar top-bar-purple"></div><div class="stat-value" id="tLearners">…</div><div class="stat-label">Learners reached</div></div>
+        <div class="stat-card"><div class="top-bar top-bar-green"></div><div class="stat-value" id="tSessions">…</div><div class="stat-label">Sessions delivered</div></div>
+        <div class="stat-card"><div class="top-bar top-bar-blue"></div><div class="stat-value" id="tHours">…</div><div class="stat-label">Contact hours</div></div>
+        <div class="stat-card"><div class="top-bar top-bar-amber"></div><div class="stat-value" id="tAttendance">…</div><div class="stat-label">Avg attendance</div></div>
+        <div class="stat-card"><div class="top-bar top-bar-green"></div><div class="stat-value" id="tPass">…</div><div class="stat-label">Assessment pass rate</div></div>
+        <div class="stat-card"><div class="top-bar top-bar-purple"></div><div class="stat-value" id="tIntegrity">…</div><div class="stat-label">Sessions validated</div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:2rem;">
+        <div class="section-header"><div>
+            <div class="section-title">Per-school breakdown</div>
+            <div class="section-sub">Attendance and delivery per partner school</div>
+        </div></div>
+        <div style="overflow-x:auto;"><table id="schoolTable">
+            <thead><tr><th>School</th><th>Province</th><th class="num">Learners</th><th class="num">Sessions</th><th class="num">Contact hrs</th><th class="num">Attendance</th><th class="num">Validated</th></tr></thead>
+            <tbody></tbody>
+        </table></div>
+    </div>
+
+    <div class="card" style="margin-bottom:2rem;">
+        <div class="section-header"><div>
+            <div class="section-title">School progress — cohort history for sponsors</div>
+            <div class="section-sub">Learners currently studying vs those who have completed the programme, per school and per module</div>
+        </div></div>
+        <div style="overflow-x:auto;"><table id="progressTable">
+            <thead><tr><th>School</th><th class="num">Studying</th><th class="num">Completed</th><th class="num">Withdrawn</th><th class="num">Completion rate</th></tr></thead>
+            <tbody></tbody>
+        </table></div>
+        <div style="overflow-x:auto;margin-top:1.25rem;"><table id="moduleProgressTable">
+            <thead><tr><th>Module</th><th class="num">Currently enrolled</th><th class="num">Completions to date</th></tr></thead>
+            <tbody></tbody>
+        </table></div>
+    </div>
+
+    <div class="card" style="margin-bottom:2rem;">
+        <div class="section-header"><div>
+            <div class="section-title">Learners needing intervention</div>
+            <div class="section-sub" id="riskSub">Flagged across all schools from attendance, submissions and marks</div>
+        </div></div>
+        <div class="table-wrap"><table class="data">
+            <thead><tr><th>Learner</th><th>School</th><th>Flag</th><th>Why</th><th class="num">Attendance</th><th class="num">Average</th></tr></thead>
+            <tbody id="riskBody"><tr><td colspan="6" class="table-empty">Loading…</td></tr></tbody>
+        </table></div>
+    </div>
+
+    <div class="card">
+        <div class="section-header"><div>
+            <div class="section-title">Marking turnaround (7-day SLA)</div>
+            <div class="section-sub">Facilitator accountability: marks must be returned within 7 days of the deadline</div>
+        </div></div>
+        <div style="overflow-x:auto;"><table id="slaTable">
+            <thead><tr><th>Facilitator</th><th>ID</th><th class="num">Marked</th><th class="num">Within SLA</th><th class="num">Compliance</th><th class="num">Avg turnaround</th></tr></thead>
+            <tbody></tbody>
+        </table></div>
+    </div>
+</main>
+<nav class="bottom-nav">
+    <a href="/admin-dashboard.html"><span class="nav-label">Dashboard</span></a>
+    <a href="/admin-reports.html" class="active"><span class="nav-label">Report</span></a>
+</nav>
+<div class="toast" id="toast"><span id="toastMsg"></span></div>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script>
+   async function load() {
+        requireAuth('admin');
+        populateHeader();
+        const from = document.getElementById('fromDate').value;
+        const to   = document.getElementById('toDate').value;
+        const q = new URLSearchParams(); if (from) q.set('from', from); if (to) q.set('to', to);
+        const r = await apiFetch('/api/reports/impact' + (q.toString() ? '?' + q : ''));
+        if (!r || r.error) return;
+
+        document.getElementById('genLine').textContent =
+            `Generated ${new Date(r.generated_at).toLocaleString('en-ZA')} · range: ${r.range.from} → ${r.range.to} · compiled automatically from synced field data`;
+        const t = r.totals;
+        const set = (id,v,suffix='') =>document.getElementById(id).textContent = v==null ? '—' : v + suffix;
+        set('tLearners', t.learners_reached);
+        set('tSessions', t.sessions_delivered);
+        set('tHours', t.contact_hours);
+        set('tAttendance', t.avg_attendance, '%');
+        set('tPass', t.pass_rate, '%');
+        set('tIntegrity', t.data_integrity, '%');
+
+        document.querySelector('#schoolTable tbody').innerHTML = r.per_school.map(s => `
+            <tr><td>${s.name}</td><td>${s.location}</td>
+                <td class="num">${s.learners}</td><td class="num">${s.sessions}</td>
+                <td class="num">${s.contact_hours}</td>
+                <td class="num">${s.attendance_rate==null?'—':s.attendance_rate+'%'}</td>
+                <td class="num">${s.sessions? Math.round(s.validated_sessions/s.sessions*100)+'%':'—'}</td></tr>`).join('');
+
+        const risk = await apiFetch('/api/at-risk');
+        if (risk && Array.isArray(risk.learners)) {
+            document.getElementById('riskSub').textContent =
+                `${risk.summary.flagged} of ${risk.summary.reviewed} active learners flagged · ${risk.summary.high} need attention now`;
+            document.getElementById('riskBody').innerHTML = risk.learners.length
+                ? risk.learners.map(u => `
+                    <tr>
+                        <td class="strong">${u.name} ${u.surname} <span class="mono">${u.student_number||''}</span></td>
+                        <td>${u.school_name||'—'}</td>
+                        <td><span class="tag ${u.level==='high'?'tag-bad':'tag-warn'}">${u.level==='high'?'needs attention':'watch'}</span></td>
+                        <td><ul class="signal-list">${u.signals.slice(0,2).map(s=>`<li>${s}</li>`).join('')}</ul></td>
+                        <td class="num">${u.attendance_rate==null?'—':u.attendance_rate+'%'}</td>
+                        <td class="num">${u.average_pct==null?'—':u.average_pct+'%'}</td>
+                    </tr>`).join('')
+                : '<tr><td colspan="6" class="table-empty">No learners are showing warning signs.</td></tr>';
+        }
+
+        const prog = await apiFetch('/api/reports/progress');
+        if (prog && prog.per_school) {
+            document.querySelector('#progressTable tbody').innerHTML = prog.per_school.map(p => `
+                <tr><td>${p.name}</td><td class="num">${p.studying}</td><td class="num">${p.completed}</td>
+                    <td class="num">${p.withdrawn}</td>
+                    <td class="num">${p.completion_rate==null?'—':p.completion_rate+'%'}</td></tr>`).join('') +
+                `<tr style="font-weight:700;"><td>All schools</td><td class="num">${prog.totals.studying}</td>
+                    <td class="num">${prog.totals.completed}</td><td class="num">${prog.totals.withdrawn}</td><td class="num"></td></tr>`;
+            document.querySelector('#moduleProgressTable tbody').innerHTML = prog.per_module.map(p => `
+                <tr><td>${p.code} · ${p.title}</td><td class="num">${p.studying}</td><td class="num">${p.completed}</td></tr>`).join('');
+        }
+
+        document.querySelector('#slaTable tbody').innerHTML = r.marking_sla.length
+            ? r.marking_sla.map(f => `
+                <tr><td>${f.facilitator}</td><td>${f.employee_id||''}</td>
+                    <td class="num">${f.graded}</td><td class="num">${f.within_sla}</td>
+                    <td class="num">${f.sla_compliance==null?'—':f.sla_compliance+'%'}</td>
+                    <td class="num">${f.avg_turnaround_days==null?'—':f.avg_turnaround_days+' days'}</td></tr>`).join('')
+            : '<tr><td colspan="6" style="color:var(--text-secondary);">No marking data in this range.</td></tr>';
+    }
+    document.addEventListener('DOMContentLoaded', () => { initTheme(); load(); });
+</script>
+</body>
+</html>

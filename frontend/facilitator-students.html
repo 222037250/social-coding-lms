@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learners – Social Coding LMS</title>
+    <link rel="stylesheet" href="shared-theme.css">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <meta name="theme-color" content="#bff747">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        .stu-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:1rem; }
+        .stu-card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:14px; padding:1.25rem; cursor:pointer; transition:all 0.2s; }
+        .stu-card:hover { transform:translateY(-2px); border-color:rgba(191,247,71,0.4); }
+        .stu-top { display:flex; align-items:center; gap:0.85rem; margin-bottom:0.8rem; }
+        .stu-name { font-weight:700; font-size:1.05rem; }
+        .stu-num { font-family:'JetBrains Mono',monospace; font-size:0.76rem; color:var(--text-secondary); }
+        .stu-stats { display:flex; gap:1.25rem; font-family:'Inter',sans-serif; font-size:0.8rem; color:var(--text-secondary); }
+        .stu-stats b { color:var(--text-primary); }
+        .chip { display:inline-block; padding:0.2rem 0.6rem; border-radius:7px; font-family:'Inter',sans-serif; font-size:0.7rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; }
+        .chip-studying { background:rgba(191,247,71,0.12); border:1px solid rgba(191,247,71,0.3); color:var(--accent-purple); }
+        [data-theme="light"] .chip-studying { background:rgba(85,131,11,0.09); border-color:rgba(85,131,11,0.3); }
+        .chip-completed { background:rgba(59,130,246,0.12); border:1px solid rgba(59,130,246,0.3); color:#60a5fa; }
+        .chip-withdrawn { background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); color:var(--accent-amber); }
+        .prof-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.4rem 1.25rem; font-family:'Inter',sans-serif; font-size:0.85rem; }
+        .prof-grid dt { color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; margin-top:0.5rem; }
+        .prof-grid dd { color:var(--text-primary); margin:0; }
+        .modal-card.wide { max-width:640px; max-height:88vh; overflow-y:auto; }
+        .prof-section { border-top:1px solid var(--divider); margin-top:1rem; padding-top:0.9rem; }
+        .prof-h { font-family:'Inter',sans-serif; font-weight:800; font-size:0.76rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--accent-purple); margin-bottom:0.5rem; }
+        table.mini { width:100%; border-collapse:collapse; font-family:'Inter',sans-serif; font-size:0.82rem; }
+        table.mini td { padding:0.4rem 0.5rem; border-bottom:1px solid var(--divider); color:var(--text-primary); }
+        .filters { display:flex; gap:0.5rem; margin-bottom:1.25rem; }
+        .f-btn { padding:0.4rem 1rem; border-radius:20px; border:1px solid var(--card-border); background:var(--card-bg); color:var(--text-secondary); font-family:'Inter',sans-serif; font-size:0.82rem; font-weight:600; cursor:pointer; }
+        .f-btn.active { background:rgba(191,247,71,0.15); border-color:var(--accent-purple); color:var(--accent-purple); }
+    </style>
+</head>
+<body>
+<div class="bg-glow bg-glow-1"></div><div class="bg-glow bg-glow-2"></div>
+<header>
+    <div class="header-content">
+        <a class="brand" href="/facilitator-dashboard.html"><div class="brand-icon"><img src="/icons/logo-mark-white.png" alt="Social Coding"></div><div><div class="brand-text">Social Coding LMS</div><div class="brand-sub">Facilitator</div></div></a>
+        <div class="header-right">
+            <nav class="nav-links">
+                <a class="nav-link" href="/facilitator-dashboard.html">Home</a>
+                <a class="nav-link active" href="/facilitator-students.html">Learners</a>
+                <a class="nav-link" href="/facilitator-attendance.html">Attendance</a>
+                <a class="nav-link" href="/facilitator-assignments.html">Assignments</a>
+                <a class="nav-link" href="/facilitator-modules.html">Modules</a>
+            </nav>
+            <label class="theme-toggle"><span id="themeIcon" class="theme-label">Dark</span><div class="toggle-track" onclick="toggleTheme()"><div class="toggle-thumb"></div></div></label>
+            <div style="display:flex;align-items:center;gap:0.6rem;"><div class="avatar" id="userAvatar">SM</div><div><div class="user-name" id="userName"></div><div class="user-meta" id="userMeta"></div></div></div>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </div>
+</header>
+<main>
+    <div class="page-header">
+        <div class="page-title">Learners</div>
+        <div class="page-subtitle" id="subLine">Everyone you teach — select a learner for their full profile, history and results</div>
+    </div>
+    <div class="stale-banner" id="staleBanner"></div>
+    <div class="filter-bar">
+        <input class="filter-search" id="fSearch" placeholder="Search name or student number…" oninput="render()">
+        <select class="filter-select" id="fStatus" onchange="render()">
+            <option value="">All statuses</option>
+            <option value="studying">Studying</option>
+            <option value="completed">Completed</option>
+            <option value="withdrawn">Withdrawn</option>
+        </select>
+        <select class="filter-select" id="fModule" onchange="render()">
+            <option value="">All courses</option>
+        </select>
+        <select class="filter-select" id="fRisk" onchange="render()">
+            <option value="">Any risk level</option>
+            <option value="high">Needs attention now</option>
+            <option value="medium">Watch list</option>
+            <option value="none">No flags</option>
+        </select>
+        <select class="filter-select" id="fPerf" onchange="render()">
+            <option value="">Any performance</option>
+            <option value="passing">Passing (50%+)</option>
+            <option value="at_risk">At risk (below 50%)</option>
+            <option value="unmarked">No marks yet</option>
+        </select>
+        <select class="filter-select" id="fGrade" onchange="render()">
+            <option value="">All grades</option>
+        </select>
+        <button class="filter-clear" onclick="clearFilters()">Clear</button>
+        <span class="filter-count" id="fCount"></span>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr>
+                <th>Student no.</th><th>Name</th><th>Grade</th><th>Courses</th>
+                <th class="num">Attendance</th><th class="num">Average</th>
+                <th class="num">Completed</th><th>Status</th><th>Flag</th><th></th>
+            </tr></thead>
+            <tbody id="grid"><tr><td colspan="10" class="table-empty">Loading…</td></tr></tbody>
+        </table>
+    </div>
+    <div class="table-caption">Select a row to open the learner's full profile, course history and results.</div>
+</main>
+
+<div class="modal" id="profModal">
+    <div class="modal-card wide" id="profBody"></div>
+</div>
+<nav class="bottom-nav">
+    <a href="/facilitator-dashboard.html"><span class="nav-label">Home</span></a>
+    <a href="/facilitator-students.html" class="active"><span class="nav-label">Learners</span></a>
+    <a href="/facilitator-attendance.html"><span class="nav-label">Attend</span></a>
+    <a href="/facilitator-assignments.html"><span class="nav-label">Work</span></a>
+    <a href="/facilitator-modules.html"><span class="nav-label">Modules</span></a>
+</nav>
+<div class="toast" id="toast"><span id="toastMsg"></span></div>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script src="offline.js"></script>
+<script>
+   let learners = [], filter = 'all';
+    const TAGCLASS = { studying:'tag-ok', completed:'tag-info', withdrawn:'tag-warn' };
+    const tag = s => `<span class="tag ${TAGCLASS[s]||'tag-idle'}">${s}</span>`;
+
+    async function load() {
+        requireAuth('facilitator');
+        populateHeader();
+        const res = await fetchCached('/api/facilitator/students');
+        setStaleBanner(res.stale, res.cachedAt);
+        const data = res.data;
+        if (!Array.isArray(data)) return;
+        const riskRes = await fetchCached('/api/at-risk');
+        riskMap = {};
+        if (riskRes.data && Array.isArray(riskRes.data.learners))
+            riskRes.data.learners.forEach(r => { riskMap[r.id] = r; });
+        learners = data;
+        const st = data.filter(x=>x.status==='studying').length;
+        document.getElementById('subLine').textContent =
+            `${st} currently studying · ${data.filter(x=>x.status==='completed').length} completed the programme`;
+        const mods = [...new Set(data.flatMap(u =>u.modules || []))].sort();
+        document.getElementById('fModule').innerHTML = '<option value="">All courses</option>' +
+            mods.map(m => `<option value="${m}">${m}</option>`).join('');
+        const grades = [...new Set(data.map(u =>u.grade).filter(Boolean))].sort();
+        document.getElementById('fGrade').innerHTML = '<option value="">All grades</option>' +
+            grades.map(g => `<option value="${g}">${g}</option>`).join('');
+        render();
+    }
+
+    function clearFilters() {
+        ['fSearch','fStatus','fModule','fPerf','fGrade'].forEach(id =>document.getElementById(id).value = '');
+        render();
+    }
+
+    function render() {
+        const q      = document.getElementById('fSearch').value.trim().toLowerCase();
+        const status = document.getElementById('fStatus').value;
+        const module = document.getElementById('fModule').value;
+        const perf   = document.getElementById('fPerf').value;
+        const grade  = document.getElementById('fGrade').value;
+        const risk   = document.getElementById('fRisk').value;
+
+        const rows = learners.filter(u =>
+            (!q || `${u.name} ${u.surname} ${u.student_number||''}`.toLowerCase().includes(q)) &&
+            (!status || u.status === status) &&
+            (!module || (u.modules||[]).includes(module)) &&
+            (!perf   || u.performance === perf) &&
+            (!grade  || u.grade === grade) &&
+            (!risk   || (risk === 'none' ? !riskMap[u.id] : (riskMap[u.id]||{}).level === risk)));
+
+        document.getElementById('fCount').textContent =
+            `${rows.length} of ${learners.length} learner${learners.length===1?'':'s'}`;
+        document.getElementById('grid').innerHTML = rows.length ? rows.map(u => `
+            <tr class="clickable" onclick="openProfile(${u.id})">
+                <td class="mono">${u.student_number||'—'}</td>
+                <td class="strong">${u.name} ${u.surname}</td>
+                <td>${u.grade||'—'}</td>
+                <td class="muted">${(u.modules||[]).join(', ')||'—'}</td>
+                <td class="num">${u.attendance_rate==null?'—':u.attendance_rate+'%'}</td>
+                <td class="num">${u.avg_pct==null?'—':u.avg_pct+'%'}</td>
+                <td class="num">${u.modules_completed}</td>
+                <td>${tag(u.status)}</td>
+                <td>${riskMap[u.id] ? `<span class="tag ${riskMap[u.id].level==='high'?'tag-bad':'tag-warn'}">${riskMap[u.id].level==='high'?'needs attention':'watch'}</span>` : '<span class="muted">—</span>'}</td>
+                <td class="num"><button class="btn btn-sm" onclick="event.stopPropagation();openProfile(${u.id})">View</button></td>
+            </tr>`).join('')
+        : '<tr><td colspan="10" class="table-empty">No learners match these filters.</td></tr>';
+    }
+
+    async function openProfile(id) {
+        const u = await apiFetch(`/api/students/${id}/profile`);
+        if (!u || u.error) { showToast(u?.error||'Could not load profile','error'); return; }
+        document.getElementById('profBody').innerHTML = `
+            <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.5rem;">
+                <div class="avatar" style="width:54px;height:54px;font-size:1.1rem;">${u.name[0]}${u.surname[0]}</div>
+                <div style="flex:1;">
+                    <div class="modal-title" style="margin:0;">${u.name} ${u.surname}</div>
+                    <div class="stu-num">${u.student_number} · ${u.school_name||''}</div>
+                </div>
+                ${tag(u.status)}
+            </div>
+            <div class="prof-section"><div class="prof-h">Personal details</div>
+                <dl class="prof-grid">
+                    <div><dt>Grade</dt><dd>${u.grade||'—'}</dd></div>
+                    <div><dt>Cohort</dt><dd>${u.cohort||'—'}</dd></div>
+                    <div><dt>Date of birth</dt><dd>${u.date_of_birth||'—'}</dd></div>
+                    <div><dt>Gender</dt><dd>${u.gender||'—'}</dd></div>
+                    <div><dt>Guardian</dt><dd>${u.guardian_name||'—'}</dd></div>
+                    <div><dt>Guardian phone</dt><dd>${u.guardian_phone||'—'}</dd></div>
+                    <div><dt>Enrolled</dt><dd>${u.enrolment_date||'—'}</dd></div>
+                    <div><dt>Attendance</dt><dd>${u.attendance.rate==null?'—':u.attendance.rate+'% ('+u.attendance.present+'/'+u.attendance.total+' sessions)'}</dd></div>
+                </dl>
+            </div>
+            ${riskMap[u.id] ? `<div class="prof-section"><div class="prof-h">Why this learner is flagged</div>
+                <ul class="signal-list">${riskMap[u.id].signals.map(sg=>`<li>${sg}</li>`).join('')}</ul></div>` : ''}
+            <div class="prof-section"><div class="prof-h">Course history</div>
+                ${u.enrollments.length ? `<table class="mini"><thead><tr><th>Code</th><th>Module</th><th>Status</th><th>Date</th></tr></thead>${u.enrollments.map(e=>`
+                    <tr><td class="mono">${e.code}</td><td>${e.title}</td>
+                        <td>${tag(e.status)}</td>
+                        <td class="muted">${e.status==='completed'?('completed '+(e.completed_at||'')):('since '+(e.enrolled_at||''))}</td></tr>`).join('')}</table>`
+                : '<div class="stu-num">No enrollment records.</div>'}
+            </div>
+            <div class="prof-section"><div class="prof-h">Marks ${u.average_pct!=null?`· average ${u.average_pct}%`:''}</div>
+                ${u.marks.length ? `<table class="mini">${u.marks.map(m=>`
+                    <tr><td>${m.module_code?`<span class="module-chip">${m.module_code}</span> `:''}${m.title}${m.is_late?' <span class="tag tag-bad">late</span>':''}</td>
+                        <td style="text-align:right;white-space:nowrap;"><b>${m.score}/${m.total_marks}</b> · ${m.percentage}%</td></tr>
+                    ${m.feedback?`<tr><td colspan="2" class="stu-num" style="padding-top:0;">“${m.feedback}”</td></tr>`:''}`).join('')}</table>`
+                : '<div class="stu-num">No marks yet.</div>'}
+            </div>
+            <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('profModal')">Close</button></div>`;
+        document.getElementById('profModal').classList.add('open');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { initTheme(); load(); });
+    document.addEventListener('click', e => { if (e.target.classList.contains('modal')) e.target.classList.remove('open'); });
+</script>
+</body>
+</html>

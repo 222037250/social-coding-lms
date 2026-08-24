@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard – Social Coding LMS</title>
+    <link rel="stylesheet" href="shared-theme.css">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <meta name="theme-color" content="#bff747">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        .tab-nav { background:#131408; border-bottom:1px solid rgba(191,247,71,0.22); position:sticky; top:var(--header-h); z-index:90; }
+        @media (max-width: 768px) {
+            .tab-nav { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+            .tab-nav::-webkit-scrollbar { display:none; }
+            .tab-btn { white-space:nowrap; flex-shrink:0; }
+            .form-row-3 { grid-template-columns:1fr !important; }
+        }
+        .tab-nav-inner { max-width:1400px; margin:0 auto; padding:0 3rem; display:flex; overflow-x:auto; }
+        .tab-btn { padding:1rem 1.4rem; background:transparent; border:none; color:rgba(237,238,228,0.78); font-family:'Inter',sans-serif; font-size:0.88rem; font-weight:700; cursor:pointer; transition:all 0.15s; border-bottom:3px solid transparent; white-space:nowrap; }
+        .tab-btn.active { color:#ffffff; border-bottom-color:#bff747; background:rgba(191,247,71,0.10); }
+        .tab-btn:hover:not(.active) { color:#ffffff; background:rgba(255,255,255,0.06); }
+        .tab-pane { display:none; }
+        .tab-pane.active { display:block; }
+
+        .highlight-row { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:2rem; }
+        @media(max-width:700px){ .highlight-row{ grid-template-columns:1fr; } }
+        .highlight-card { border-radius:14px; padding:1.5rem; border:1px solid transparent; }
+        .highlight-card.best  { background:rgba(16,185,129,0.1); border-color:rgba(16,185,129,0.25); }
+        .highlight-card.worst { background:rgba(239,68,68,0.08); border-color:rgba(239,68,68,0.2); }
+        .h-label { font-family:'Inter',sans-serif; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:0.6rem; }
+        .best .h-label  { color:var(--accent-green); }
+        .worst .h-label { color:var(--accent-red); }
+        .h-name { font-size:1.3rem; font-weight:700; color:var(--text-primary); margin-bottom:0.2rem; }
+        .h-rate { font-family:'Inter',sans-serif; font-size:2rem; font-weight:700; }
+        .best .h-rate  { color:var(--accent-green); }
+        .worst .h-rate { color:var(--accent-red); }
+        .chart-area { height:240px; position:relative; }
+
+        /* User management */
+        .user-filters { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1.5rem; }
+        .uf-btn { padding:0.4rem 1rem; border-radius:20px; border:1px solid var(--card-border); background:var(--card-bg); color:var(--text-secondary); font-family:'Inter',sans-serif; font-size:0.82rem; font-weight:600; cursor:pointer; transition:all 0.2s; }
+        .uf-btn.active,.uf-btn:hover { background:rgba(191,247,71,0.15); border-color:var(--accent-purple); color:var(--accent-purple); }
+        .user-card { background:var(--input-bg); border:1px solid var(--divider); border-radius:12px; padding:1.1rem 1.25rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:0.6rem; transition:border-color 0.2s; }
+        .user-card:hover { border-color:var(--card-border); }
+        .user-avatar { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.9rem; color:white; flex-shrink:0; }
+        .av-fac { background:linear-gradient(135deg,#10b981,#059669); }
+        .av-stu { background:linear-gradient(135deg,var(--accent-purple),var(--accent-purple2)); }
+        .user-info-block { flex:1; min-width:150px; }
+        .user-fullname { font-size:1rem; font-weight:700; color:var(--text-primary); }
+        .user-detail { font-family:'Inter',sans-serif; font-size:0.8rem; color:var(--text-secondary); margin-top:0.15rem; }
+        .user-actions { display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; }
+
+        /* Add user form */
+        .form-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; }
+        @media(max-width:800px){ .form-row-3{ grid-template-columns:1fr 1fr; } }
+        @media(max-width:500px){ .form-row-3{ grid-template-columns:1fr; } }
+
+        /* School table */
+        .sch-table { width:100%; border-collapse:collapse; }
+        .sch-table th { font-family:'Inter',sans-serif; font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-secondary); padding:0.65rem 1rem; text-align:left; border-bottom:1px solid var(--divider); }
+        .sch-table td { padding:0.85rem 1rem; border-bottom:1px solid var(--divider); font-size:0.95rem; color:var(--text-primary); }
+        .sch-table tr:last-child td { border-bottom:none; }
+        .sch-table tr:hover td { background:rgba(255,255,255,0.02); }
+
+        .toast { position:fixed; bottom:2rem; right:2rem; z-index:999; background:var(--card-bg); border:1px solid var(--card-border); border-radius:12px; padding:1rem 1.5rem; font-family:'Inter',sans-serif; font-size:0.9rem; color:var(--text-primary); box-shadow:var(--shadow-card); backdrop-filter:blur(12px); transform:translateY(100px); opacity:0; transition:transform 0.35s,opacity 0.35s; display:flex; align-items:center; gap:0.6rem; }
+        .toast.show { transform:translateY(0); opacity:1; }
+        .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(6px); z-index:200; align-items:center; justify-content:center; padding:1rem; }
+        .modal.open { display:flex; }
+        .modal-card { background:linear-gradient(135deg,var(--bg-grad-start),var(--bg-grad-mid)); border:1px solid var(--card-border); border-radius:20px; padding:2.5rem; width:100%; max-width:520px; }
+        .modal-title { font-size:1.5rem; font-weight:700; color:var(--text-primary); margin-bottom:0.3rem; }
+        .modal-sub { font-family:'Inter',sans-serif; font-size:0.87rem; color:var(--text-secondary); margin-bottom:1.5rem; }
+        .modal-actions { display:flex; gap:0.75rem; justify-content:flex-end; margin-top:1.5rem; }
+        .btn-cancel { background:transparent; border:1px solid var(--card-border); color:var(--text-secondary); padding:0.65rem 1.3rem; border-radius:8px; font-family:'Inter',sans-serif; font-size:0.88rem; cursor:pointer; }
+    </style>
+</head>
+<body>
+<div class="bg-glow bg-glow-1"></div><div class="bg-glow bg-glow-2"></div>
+
+<header>
+    <div class="header-content">
+        <a class="brand" href="#"><div class="brand-icon"><img src="/icons/logo-mark-white.png" alt="Social Coding"></div><div><div class="brand-text">Social Coding LMS</div><div class="brand-sub">Admin Portal</div></div></a>
+        <div class="header-right">
+            <nav class="nav-links"><a class="nav-link active" href="/admin-dashboard.html">Dashboard</a><a class="nav-link" href="/admin-reports.html">Impact Report</a></nav>
+            <span class="badge badge-purple" style="padding:0.4rem 1rem;">Administrator</span>
+            <label class="theme-toggle"><span id="themeIcon" class="theme-label">Dark</span><div class="toggle-track" onclick="toggleTheme()"><div class="toggle-thumb"></div></div></label>
+            <div style="display:flex;align-items:center;gap:0.6rem;"><div class="avatar" id="userAvatar">SA</div><div><div class="user-name" id="userName"></div><div class="user-meta" id="userMeta"></div></div></div>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </div>
+</header>
+
+<nav class="tab-nav">
+    <div class="tab-nav-inner">
+        <button class="tab-btn active" onclick="switchTab('dashboard',this)">Dashboard</button>
+        <button class="tab-btn"        onclick="switchTab('students',this)">Students</button>
+        <button class="tab-btn"        onclick="switchTab('facilitators',this)">Facilitators</button>
+        <button class="tab-btn"        onclick="switchTab('sponsors',this)">Sponsors</button>
+        <button class="tab-btn"        onclick="switchTab('schools',this)">Schools</button>
+        <button class="tab-btn"        onclick="switchTab('readings',this)">Readings</button>
+    </div>
+</nav>
+
+<main>
+
+    <!-- ── TAB 1: Dashboard ── -->
+    <div class="tab-pane active" id="tab-dashboard">
+        <div class="page-header"><div class="page-title">Analytics Dashboard</div><div class="page-subtitle" id="todayDate"></div></div>
+        <div class="stats-grid" style="margin-bottom:2rem;">
+            <div class="stat-card"><div class="top-bar top-bar-purple"></div><div class="stat-value" id="statSchools">…</div><div class="stat-label">Schools</div></div>
+            <div class="stat-card"><div class="top-bar top-bar-green"></div><div class="stat-value" id="statLearners">…</div><div class="stat-label">Total Learners</div></div>
+            <div class="stat-card"><div class="top-bar top-bar-blue"></div><div class="stat-value" id="statAvgAtt">…</div><div class="stat-label">Avg Attendance</div></div>
+            <div class="stat-card"><div class="top-bar top-bar-amber"></div><div class="stat-value" id="statSessions">…</div><div class="stat-label">Sessions</div></div>
+        </div>
+        <div class="highlight-row">
+            <div class="highlight-card best"><div class="h-label">Highest Performing</div><div class="h-name" id="bestSchool">…</div><div class="h-rate" id="bestRate">…</div><div style="font-family:'Inter',sans-serif;font-size:0.82rem;color:var(--text-secondary);margin-top:0.3rem;">Attendance rate</div></div>
+            <div class="highlight-card worst"><div class="h-label">Lowest Performing</div><div class="h-name" id="worstSchool">…</div><div class="h-rate" id="worstRate">…</div><div style="font-family:'Inter',sans-serif;font-size:0.82rem;color:var(--text-secondary);margin-top:0.3rem;">Attendance rate</div></div>
+        </div>
+        <div class="grid-2" style="margin-bottom:2rem;">
+            <div class="card"><div class="section-header"><div><div class="section-title">Attendance per School</div></div></div><div class="chart-area"><canvas id="schoolChart"></canvas></div></div>
+            <div class="card"><div class="section-header"><div><div class="section-title">All Schools</div></div></div><div style="overflow-x:auto;" id="schoolSummaryTable"></div></div>
+        </div>
+    </div>
+
+    <!-- ── TAB 2: User Management ── -->
+    <!-- ── Student Management ── -->
+    <div class="tab-pane" id="tab-students">
+        <div class="page-header"><div class="page-title">Student Management</div><div class="page-subtitle">Enrol learners with their student numbers and manage their school placement</div></div>
+        <div class="card" style="margin-bottom:2rem;">
+            <div class="section-title" style="margin-bottom:0.3rem;">Enrol a Learner</div>
+            <div class="section-sub" style="margin-bottom:1.5rem;">Student numbers follow the pattern SC-YYYY-NNNN</div>
+            <div class="form-row-3">
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">First Name</label><input type="text" class="form-input" id="stuName" placeholder="e.g. Thandi"></div>
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Surname</label><input type="text" class="form-input" id="stuSurname" placeholder="e.g. Mabena"></div>
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Student Number</label><input type="text" class="form-input" id="stuLoginId" placeholder="SC-2025-0011"></div>
+            </div>
+            <div class="form-row-3" style="margin-top:1rem;">
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Grade</label>
+                    <select class="form-select" id="stuGrade"><option value="">Select…</option><option>Grade 8</option><option>Grade 9</option><option>Grade 10</option><option>Grade 11</option><option>Grade 12</option></select></div>
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Date of Birth</label><input type="date" class="form-input" id="stuDob"></div>
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Gender</label>
+                    <select class="form-select" id="stuGender"><option value="">Select…</option><option value="F">Female</option><option value="M">Male</option><option value="Other">Other</option></select></div>
+            </div>
+            <div class="form-row-3" style="margin-top:1rem;">
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Guardian Name</label><input type="text" class="form-input" id="stuGuardian" placeholder="Parent / guardian"></div>
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Guardian Phone</label><input type="text" class="form-input" id="stuGuardianPhone" placeholder="08x xxx xxxx"></div>
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Temporary Password</label><input type="text" class="form-input" id="stuPassword" placeholder="They change it later"></div>
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">School</label><select class="form-select school-dd" id="stuSchool"><option value="">Loading…</option></select></div>
+                <div class="form-group" style="margin-bottom:0;display:flex;align-items:flex-end;"><button class="btn btn-primary" style="width:100%;height:44px;" onclick="addActor('student')">+ Enrol Learner</button></div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="section-header"><div><div class="section-title">All Learners</div><div class="section-sub" id="stuCount"></div></div></div>
+            <div class="filter-bar">
+                <input class="filter-search" id="sSearch" placeholder="Search name or student number…" oninput="renderUsers()">
+                <select class="filter-select" id="sSchool" onchange="renderUsers()"><option value="">All schools</option></select>
+                <select class="filter-select" id="sStatus" onchange="renderUsers()">
+                    <option value="">All statuses</option><option value="studying">Studying</option>
+                    <option value="completed">Completed</option><option value="withdrawn">Withdrawn</option>
+                </select>
+                <select class="filter-select" id="sModule" onchange="renderUsers()"><option value="">All courses</option></select>
+                <select class="filter-select" id="sGrade" onchange="renderUsers()"><option value="">All grades</option></select>
+                <button class="filter-clear" onclick="clearUserFilters('s')">Clear</button>
+                <span class="filter-count" id="sCount"></span>
+            </div>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead><tr><th>Student no.</th><th>Name</th><th>Grade</th><th>Cohort</th>
+                        <th>School</th><th>Courses</th><th>Status</th><th></th></tr></thead>
+                    <tbody id="studentList"><tr><td colspan="8" class="table-empty">Loading…</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Facilitator Management ── -->
+    <div class="tab-pane" id="tab-facilitators">
+        <div class="page-header"><div class="page-title">Facilitator Management</div><div class="page-subtitle">Register facilitators with employee IDs and assign each to a school</div></div>
+        <div class="card" style="margin-bottom:2rem;">
+            <div class="section-title" style="margin-bottom:0.3rem;">Register a Facilitator</div>
+            <div class="section-sub" style="margin-bottom:1.5rem;">Employee IDs follow the pattern FAC-NNN · assigning a school makes them its facilitator of record</div>
+            <div class="form-row-3">
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">First Name</label><input type="text" class="form-input" id="facName" placeholder="e.g. Mandla"></div>
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Surname</label><input type="text" class="form-input" id="facSurname" placeholder="e.g. Dube"></div>
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Employee ID</label><input type="text" class="form-input" id="facLoginId" placeholder="FAC-006"></div>
+            </div>
+            <div class="form-row-3" style="margin-top:1rem;">
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Phone</label><input type="text" class="form-input" id="facPhone" placeholder="08x xxx xxxx"></div>
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Qualification</label><input type="text" class="form-input" id="facQual" placeholder="e.g. PathMakers Certified"></div>
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Specialisation</label><input type="text" class="form-input" id="facSpec" placeholder="e.g. Python & Web"></div>
+            </div>
+            <div class="form-row-3" style="margin-top:1rem;">
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Temporary Password</label><input type="text" class="form-input" id="facPassword" placeholder="They change it later"></div>
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">School</label><select class="form-select school-dd" id="facSchool"><option value="">Loading…</option></select></div>
+                <div class="form-group" style="margin-bottom:0;display:flex;align-items:flex-end;"><button class="btn btn-primary" style="width:100%;height:44px;" onclick="addActor('facilitator')">+ Register Facilitator</button></div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="section-header"><div><div class="section-title">All Facilitators</div><div class="section-sub" id="facCount"></div></div></div>
+            <div class="filter-bar">
+                <input class="filter-search" id="tSearch" placeholder="Search name or employee ID…" oninput="renderUsers()">
+                <select class="filter-select" id="tSchool" onchange="renderUsers()"><option value="">All schools</option></select>
+                <button class="filter-clear" onclick="clearUserFilters('t')">Clear</button>
+                <span class="filter-count" id="tCount"></span>
+            </div>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead><tr><th>Employee ID</th><th>Name</th><th>School</th><th>Qualification</th><th>Phone</th><th></th></tr></thead>
+                    <tbody id="facilitatorList"><tr><td colspan="6" class="table-empty">Loading…</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Sponsor Information ── -->
+    <div class="tab-pane" id="tab-sponsors">
+        <div class="page-header"><div class="page-title">Sponsor Information</div><div class="page-subtitle">The funders our impact reporting exists to serve — organisations, contacts, and which schools they fund</div></div>
+        <div class="stats-grid" style="margin-bottom:2rem;">
+            <div class="stat-card"><div class="top-bar top-bar-purple"></div><div class="stat-value" id="spTotal">…</div><div class="stat-label">Sponsors</div></div>
+            <div class="stat-card"><div class="top-bar top-bar-green"></div><div class="stat-value" id="spActive">…</div><div class="stat-label">Active</div></div>
+            <div class="stat-card"><div class="top-bar top-bar-amber"></div><div class="stat-value" id="spFunding">…</div><div class="stat-label">Annual funding</div></div>
+        </div>
+        <div class="card" style="margin-bottom:2rem;">
+            <div class="section-title" style="margin-bottom:0.3rem;">Add a Sponsor</div>
+            <div class="section-sub" style="margin-bottom:1.5rem;">Capture the organisation and its point of contact</div>
+            <div class="form-row-3">
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Organisation</label><input type="text" class="form-input" id="spOrg" placeholder="e.g. Ubuntu Digital Trust"></div>
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Contact Person</label><input type="text" class="form-input" id="spContact" placeholder="e.g. Naledi Khoza"></div>
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Email</label><input type="text" class="form-input" id="spEmail" placeholder="grants@example.org"></div>
+            </div>
+            <div class="form-row-3" style="margin-top:1rem;">
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Phone</label><input type="text" class="form-input" id="spPhone" placeholder="011 555 0000"></div>
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Focus Area</label><input type="text" class="form-input" id="spFocus" placeholder="e.g. STEM education"></div>
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Status</label>
+                    <select class="form-select" id="spStatus"><option value="active">Active</option><option value="prospective">Prospective</option><option value="lapsed">Lapsed</option></select></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:flex-end;margin-top:1rem;">
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Notes (reporting requirements, history)</label><input type="text" class="form-input" id="spNotes" placeholder="e.g. Requires quarterly attendance reporting"></div>
+                <button class="btn btn-primary" onclick="addSponsor()" style="height:44px;">+ Add Sponsor</button>
+            </div>
+        </div>
+        <div id="sponsorList"><div style="font-family:'Inter',sans-serif;color:var(--text-secondary);">Loading…</div></div>
+    </div>
+
+    <!-- ── TAB 3: Schools ── -->
+    <div class="tab-pane" id="tab-schools">
+        <div class="page-header"><div class="page-title">Manage Schools</div></div>
+        <div class="card" style="margin-bottom:2rem;">
+            <div class="table-wrap">
+                <table class="data">
+                    <thead><tr><th>School</th><th>Province</th><th>Facilitator</th><th class="num">Learners</th><th>Status</th></tr></thead>
+                    <tbody id="schoolsTableBody"><tr><td colspan="5" class="table-empty">Loading…</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card">
+            <div class="section-title" style="margin-bottom:0.3rem;">Add New School</div>
+            <div class="section-sub" style="margin-bottom:1.5rem;">Register a new participating school</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:1rem;align-items:flex-end;">
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">School Name</label><input type="text" class="form-input" id="newSchoolName" placeholder="e.g. Isipho High"></div>
+                <div class="form-group" style="margin-bottom:0;"><label class="form-label">Location / Province</label><input type="text" class="form-input" id="newSchoolLocation" placeholder="e.g. Gauteng"></div>
+                <button class="btn btn-primary" onclick="addSchool()" style="height:44px;">+ Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── TAB 4: Readings ── -->
+    <div class="tab-pane" id="tab-readings">
+        <div class="page-header"><div class="page-title">Recommend Readings</div></div>
+        <div class="grid-2">
+            <div class="card">
+                <div class="section-title" style="margin-bottom:0.3rem;">Add New Reading</div>
+                <div class="section-sub" style="margin-bottom:1.5rem;">Visible to all students</div>
+                <div class="form-group"><label class="form-label">Title</label><input type="text" class="form-input" id="readTitle" placeholder="e.g. Python for Beginners"></div>
+                <div class="form-group"><label class="form-label">Category</label>
+                    <select class="form-select" id="readCat">
+                        <option>Programming</option><option>Digital Literacy</option><option>Web Development</option><option>Cyber Safety</option><option>Career Skills</option>
+                    </select>
+                </div>
+                <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="readDesc" rows="2" placeholder="Brief description…"></textarea></div>
+                <div style="background:var(--input-bg);border:1px solid var(--divider);border-radius:10px;padding:1rem;margin-bottom:1rem;">
+                    <div style="font-family:'Inter',sans-serif;font-size:0.78rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.75rem;">Choose one option</div>
+                    <div class="form-group" style="margin-bottom:0.75rem;">
+                        <label class="form-label">Upload a File <span style="opacity:0.55;">(PDF, DOC, PPT, etc. — max 50MB)</span></label>
+                        <input type="file" class="form-input" id="readFile" style="padding:0.55rem;" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md,.png,.jpg,.jpeg">
+                    </div>
+                    <div style="font-family:'Inter',sans-serif;font-size:0.8rem;color:var(--text-secondary);text-align:center;margin:0.5rem 0;">— OR —</div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label class="form-label">Paste a URL <span style="opacity:0.55;">(Google Drive, website, online PDF)</span></label>
+                        <input type="text" class="form-input" id="readUrl" placeholder="https://…">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="addReading()">Add Reading</button>
+            </div>
+            <div class="card">
+                <div class="section-title" style="margin-bottom:0.3rem;">Current Recommendations</div>
+                <div class="section-sub" style="margin-bottom:1.5rem;">Visible to all students</div>
+                <div id="readingsList"></div>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<!-- Edit Reading Modal -->
+<div class="modal" id="editReadingModal">
+    <div class="modal-card" style="max-width:540px;">
+        <div class="modal-title">Edit Reading</div>
+        <div class="modal-sub">Update the details for this reading</div>
+        <input type="hidden" id="editReadingId">
+        <div class="form-group">
+            <label class="form-label">Title</label>
+            <input type="text" class="form-input" id="editReadTitle" placeholder="Reading title">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Category</label>
+            <select class="form-select" id="editReadCat">
+                <option>Programming</option>
+                <option>Digital Literacy</option>
+                <option>Web Development</option>
+                <option>Cyber Safety</option>
+                <option>Career Skills</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea class="form-textarea" id="editReadDesc" rows="2" placeholder="Brief description…"></textarea>
+        </div>
+        <div style="background:var(--input-bg);border:1px solid var(--divider);border-radius:10px;padding:1rem;margin-bottom:1rem;">
+            <div style="font-family:'Inter',sans-serif;font-size:0.78rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.75rem;">File / URL</div>
+            <div id="editCurrentFile" style="font-family:'Inter',sans-serif;font-size:0.85rem;color:var(--accent-green);margin-bottom:0.75rem;display:none;">
+                Current file: <span id="editCurrentFileName"></span>
+                <button onclick="removeCurrentFile()" style="background:none;border:none;color:var(--accent-red);cursor:pointer;font-size:0.8rem;margin-left:0.5rem;">Remove</button>
+            </div>
+            <div id="editCurrentUrl" style="font-family:'Inter',sans-serif;font-size:0.85rem;color:var(--accent-blue);margin-bottom:0.75rem;display:none;">
+                Current URL: <span id="editCurrentUrlText" style="word-break:break-all;"></span>
+            </div>
+            <div class="form-group" style="margin-bottom:0.75rem;">
+                <label class="form-label">Replace with new File <span style="opacity:0.55;">(optional)</span></label>
+                <input type="file" class="form-input" id="editReadFile" style="padding:0.55rem;" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md,.png,.jpg,.jpeg">
+            </div>
+            <div style="font-family:'Inter',sans-serif;font-size:0.8rem;color:var(--text-secondary);text-align:center;margin:0.5rem 0;">— OR —</div>
+            <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">Replace with new URL <span style="opacity:0.55;">(optional)</span></label>
+                <input type="text" class="form-input" id="editReadUrl" placeholder="https://…">
+            </div>
+        </div>
+        <input type="hidden" id="editRemoveFile" value="false">
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal('editReadingModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm delete modal -->
+<div class="modal" id="confirmModal">
+    <div class="modal-card">
+        <div class="modal-title">Confirm Removal</div>
+        <div class="modal-sub" id="confirmMsg">Are you sure you want to remove this user?</div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal('confirmModal')">Cancel</button>
+            <button class="btn btn-primary" style="background:linear-gradient(135deg,var(--accent-red),#dc2626);" id="confirmBtn">Remove</button>
+        </div>
+    </div>
+</div>
+
+<nav class="bottom-nav">
+    <a href="/admin-dashboard.html" class="active"><span class="nav-label">Dashboard</span></a>
+    <a href="/admin-reports.html"><span class="nav-label">Report</span></a>
+</nav>
+<div class="toast" id="toast"><span id="toastMsg"></span></div>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script>
+   let allUsers   = [];
+    let allSchools = [];
+
+    let chartInst  = null;
+
+    function switchTab(tab, btn) {
+        document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+        document.getElementById('tab-'+tab).classList.add('active');
+        btn.classList.add('active');
+    }
+
+    function scoreColor(r) { return r>=80?'var(--accent-green)':r>=65?'var(--accent-amber)':'var(--accent-red)'; }
+    function scoreLabel(r) { return r>=80?['badge-green','Good']:r>=65?['badge-amber','Average']:['badge-red','Low']; }
+
+    async function load() {
+        requireAuth('admin');
+        populateHeader();
+        document.getElementById('todayDate').textContent = ' ' + new Date().toLocaleDateString('en-ZA',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+        const [stats, schools, users, readings] = await Promise.all([
+            apiFetch('/api/admin/stats'),
+            apiFetch('/api/admin/schools'),
+            apiFetch('/api/admin/users'),
+            apiFetch('/api/readings'),
+        ]);
+
+        if (stats) renderDashboard(stats);
+        if (schools) { allSchools = schools; renderSchoolsTab(schools); populateSchoolDropdown(schools); }
+        if (users)   { allUsers = users; buildUserFilters(); renderUsers(); }
+        if (readings) renderReadings(readings);
+        loadSponsors();
+    }
+
+    // ── Dashboard ──────────────────────────────────────────────────────────────
+    function renderDashboard(stats) {
+        document.getElementById('statSchools').textContent  = stats.totalSchools;
+        document.getElementById('statLearners').textContent = stats.totalLearners;
+        document.getElementById('statAvgAtt').textContent   = stats.avgAttendance + '%';
+        document.getElementById('statSessions').textContent = stats.totalSessions;
+
+        if (stats.highest) { document.getElementById('bestSchool').textContent=stats.highest.name; document.getElementById('bestRate').textContent=stats.highest.attendance_rate+'%'; }
+        if (stats.lowest)  { document.getElementById('worstSchool').textContent=stats.lowest.name; document.getElementById('worstRate').textContent=stats.lowest.attendance_rate+'%'; }
+
+        if (chartInst) chartInst.destroy();
+        chartInst = new Chart(document.getElementById('schoolChart'), {
+            type:'bar',
+            data:{ labels:stats.schools.map(s=>s.name.split(' ')[0]), datasets:[{ data:stats.schools.map(s=>s.attendance_rate), backgroundColor:stats.schools.map(s=>scoreColor(s.attendance_rate)+'bb'), borderRadius:6, borderSkipped:false }] },
+            options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{display:false},ticks:{color:'#a1a0a8',font:{family:'Inter',size:10}}}, y:{min:0,max:100,grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#a1a0a8',font:{family:'Inter',size:11},callback:v=>v+'%'}} } }
+        });
+
+        document.getElementById('schoolSummaryTable').innerHTML = `<table class="sch-table">
+            <thead><tr><th>School</th><th>Learners</th><th>Rate</th><th>Status</th></tr></thead>
+            <tbody>${stats.schools.map(s=>{const[cls,lbl]=scoreLabel(s.attendance_rate);return`<tr>
+                <td style="font-weight:600;">${s.name}</td>
+                <td style="font-family:'Inter',sans-serif;font-size:0.85rem;color:var(--text-secondary);">${s.learner_count}</td>
+                <td style="font-family:'Inter',sans-serif;font-weight:700;color:${scoreColor(s.attendance_rate)};">${s.attendance_rate}%</td>
+                <td><span class="badge ${cls}">${lbl}</span></td>
+            </tr>`;}).join('')}</tbody>
+        </table>`;
+    }
+
+    // ── User Management ────────────────────────────────────────────────────────
+    function schoolPicker(u) {
+        return `<select class="filter-select" style="padding:0.3rem 0.5rem;font-size:0.78rem;" onchange="moveUser(${u.id},this.value)">
+            <option value="">Move school…</option>
+            ${allSchools.map(s=>`<option value="${s.id}" ${s.id==u.school_id?'selected':''}>${s.name}</option>`).join('')}
+        </select>`;
+    }
+    const STATUS_TAG = { studying:'tag-ok', completed:'tag-info', withdrawn:'tag-warn' };
+    function studentRow(u) {
+        const st = u.student_status || 'studying';
+        return `<tr>
+            <td class="mono">${u.student_number||'—'}</td>
+            <td class="strong">${u.name} ${u.surname}</td>
+            <td>${u.grade||'—'}</td>
+            <td class="muted">${u.cohort||'—'}</td>
+            <td>${u.school_name||'Unassigned'}</td>
+            <td class="muted">${String(u.module_codes||'').split(',').filter(Boolean).join(', ')||'—'}</td>
+            <td><span class="tag ${STATUS_TAG[st]||'tag-idle'}">${st}</span></td>
+            <td><div class="row-actions">${schoolPicker(u)}
+                <button class="btn btn-sm" style="color:var(--accent-red);border-color:var(--accent-red);" onclick="confirmRemove(${u.id},'${(u.name+' '+u.surname).replace(/'/g,"\\'")}')">Remove</button>
+            </div></td></tr>`;
+    }
+    function facilitatorRow(u) {
+        return `<tr>
+            <td class="mono">${u.employee_id||'—'}</td>
+            <td class="strong">${u.name} ${u.surname}</td>
+            <td>${u.school_name||'Unassigned'}</td>
+            <td class="muted">${u.qualification||'—'}</td>
+            <td class="muted">${u.fac_phone||'—'}</td>
+            <td><div class="row-actions">${schoolPicker(u)}
+                <button class="btn btn-sm" style="color:var(--accent-red);border-color:var(--accent-red);" onclick="confirmRemove(${u.id},'${(u.name+' '+u.surname).replace(/'/g,"\\'")}')">Remove</button>
+            </div></td></tr>`;
+    }
+
+    function clearUserFilters(p) {
+        (p==='s' ? ['sSearch','sSchool','sStatus','sModule','sGrade'] : ['tSearch','tSchool'])
+            .forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
+        renderUsers();
+    }
+
+    function renderUsers() {
+        const val = id => (document.getElementById(id)?.value || '');
+        const sq = val('sSearch').trim().toLowerCase();
+        const students = allUsers.filter(u =>u.role==='student')
+            .filter(u => (!sq || `${u.name} ${u.surname} ${u.student_number||''}`.toLowerCase().includes(sq))
+                && (!val('sSchool') || String(u.school_id)===val('sSchool'))
+                && (!val('sStatus') || (u.student_status||'studying')===val('sStatus'))
+                && (!val('sModule') || String(u.module_codes||'').split(',').includes(val('sModule')))
+                && (!val('sGrade')  || u.grade===val('sGrade')));
+        const tq = val('tSearch').trim().toLowerCase();
+        const facs = allUsers.filter(u =>u.role==='facilitator')
+            .filter(u => (!tq || `${u.name} ${u.surname} ${u.employee_id||''}`.toLowerCase().includes(tq))
+                && (!val('tSchool') || String(u.school_id)===val('tSchool')));
+
+        const allStu = allUsers.filter(u=>u.role==='student').length;
+        const allFac = allUsers.filter(u=>u.role==='facilitator').length;
+        document.getElementById('sCount').textContent = `${students.length} of ${allStu} learners`;
+        document.getElementById('tCount').textContent = `${facs.length} of ${allFac} facilitators`;
+        document.getElementById('stuCount').textContent = allStu + ' enrolled across all schools';
+        document.getElementById('facCount').textContent = allFac + ' registered';
+        document.getElementById('studentList').innerHTML = students.length
+            ? students.map(studentRow).join('') : '<tr><td colspan="8" class="table-empty">No learners match these filters.</td></tr>';
+        document.getElementById('facilitatorList').innerHTML = facs.length
+            ? facs.map(facilitatorRow).join('') : '<tr><td colspan="6" class="table-empty">No facilitators match these filters.</td></tr>';
+    }
+
+    function buildUserFilters() {
+        const opts = allSchools.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+        const ss=document.getElementById('sSchool'), ts=document.getElementById('tSchool');
+        if (ss) ss.innerHTML = '<option value="">All schools</option>'+opts;
+        if (ts) ts.innerHTML = '<option value="">All schools</option>'+opts;
+        const mods=[...new Set(allUsers.flatMap(u=>String(u.module_codes||'').split(',').filter(Boolean)))].sort();
+        const sm=document.getElementById('sModule');
+        if (sm) sm.innerHTML = '<option value="">All courses</option>'+mods.map(m=>`<option value="${m}">${m}</option>`).join('');
+        const grades=[...new Set(allUsers.map(u=>u.grade).filter(Boolean))].sort();
+        const sg=document.getElementById('sGrade');
+        if (sg) sg.innerHTML = '<option value="">All grades</option>'+grades.map(g=>`<option value="${g}">${g}</option>`).join('');
+    }
+
+    function populateSchoolDropdown(schools) {
+        const opts = `<option value="">Select school…</option>` +
+            schools.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+        const stu = document.getElementById('stuSchool'); if (stu) stu.innerHTML = opts;
+        const fac = document.getElementById('facSchool'); if (fac) fac.innerHTML = opts;
+    }
+
+    async function addActor(kind) {
+        const p = kind === 'student' ? 'stu' : 'fac';
+        const name     = document.getElementById(p+'Name').value.trim();
+        const surname  = document.getElementById(p+'Surname').value.trim();
+        const login_id = document.getElementById(p+'LoginId').value.trim();
+        const password = document.getElementById(p+'Password').value.trim();
+        const school   = document.getElementById(p+'School').value;
+        if (!name||!surname||!login_id||!password||!school) { showToast('Please fill in all fields.','warn'); return; }
+        const extra = kind === 'student'
+            ? { grade: document.getElementById('stuGrade').value,
+                date_of_birth: document.getElementById('stuDob').value,
+                gender: document.getElementById('stuGender').value,
+                guardian_name: document.getElementById('stuGuardian').value.trim(),
+                guardian_phone: document.getElementById('stuGuardianPhone').value.trim() }
+            : { phone: document.getElementById('facPhone').value.trim(),
+                qualification: document.getElementById('facQual').value.trim(),
+                specialisation: document.getElementById('facSpec').value.trim() };
+        const res = await apiFetch('/api/admin/users', {
+            method:'POST', body:{ name, surname, login_id, password, role: kind, school_id: Number(school), ...extra } });
+        if (!res) return;
+        if (res.error) { showToast(res.error,'error'); return; }
+        showToast((kind==='student'?'Learner enrolled':'Facilitator registered')+' — they can log in now.');
+        [p+'Name',p+'Surname',p+'LoginId',p+'Password'].forEach(id =>document.getElementById(id).value='');
+        ['stuGrade','stuDob','stuGender','stuGuardian','stuGuardianPhone','facPhone','facQual','facSpec']
+            .forEach(id => { const el=document.getElementById(id); if (el) el.value=''; });
+        const updated = await apiFetch('/api/admin/users');
+        if (Array.isArray(updated)) { allUsers = updated; renderUsers(); }
+        const updatedSchools = await apiFetch('/api/admin/schools');
+        if (Array.isArray(updatedSchools)) { allSchools = updatedSchools; renderSchoolsTab(updatedSchools); }
+    }
+
+    // ── Sponsors ──
+    async function loadSponsors() {
+        const data = await apiFetch('/api/admin/sponsors');
+        if (!data || !Array.isArray(data.sponsors)) return;
+        document.getElementById('spTotal').textContent = data.totals.count;
+        document.getElementById('spActive').textContent = data.totals.active;
+        document.getElementById('spFunding').textContent = 'R' + data.totals.annual_funding.toLocaleString('en-ZA');
+        const badge = { active:'badge-green', prospective:'badge-amber', lapsed:'badge-blue' };
+        document.getElementById('sponsorList').innerHTML = data.sponsors.length ? data.sponsors.map(sp => `
+            <div class="card" style="margin-bottom:1.25rem;">
+                <div class="section-header">
+                    <div>
+                        <div class="section-title">${sp.organisation} <span class="badge ${badge[sp.status]||'badge-blue'}" style="font-size:0.68rem;vertical-align:middle;">${sp.status}</span></div>
+                        <div class="section-sub">${sp.contact_person||''}${sp.email?' · '+sp.email:''}${sp.phone?' · '+sp.phone:''}${sp.focus_area?' · Focus: '+sp.focus_area:''}</div>
+                        ${sp.notes?`<div class="section-sub" style="margin-top:0.25rem;font-style:italic;">${sp.notes}</div>`:''}
+                    </div>
+                    <button class="btn btn-outline btn-sm" style="color:var(--accent-red);border-color:var(--accent-red);" onclick="removeSponsor(${sp.id},'${sp.organisation.replace(/'/g,"\\'")}')">Remove</button>
+                </div>
+                <div style="margin-top:0.75rem;">
+                    ${sp.sponsorships.length ? sp.sponsorships.map(x=>`
+                        <div class="material-row">
+                            <div style="flex:1;"><b>${x.school_name}</b> <span class="material-size">· ${x.location}</span></div>
+                            <div class="material-size">R${Number(x.annual_amount||0).toLocaleString('en-ZA')}/yr${x.start_date?` · ${x.start_date} → ${x.end_date||'ongoing'}`:''}</div>
+                            <button class="btn btn-sm" onclick="unlinkSponsorship(${x.id})"></button>
+                        </div>`).join('')
+                    : '<div class="section-sub">Not linked to any school yet.</div>'}
+                    <div style="display:flex;gap:0.6rem;margin-top:0.6rem;flex-wrap:wrap;align-items:center;">
+                        <select class="form-select school-dd" id="spSchool-${sp.id}" style="width:auto;min-width:200px;padding:0.45rem 0.7rem;font-size:0.82rem;"></select>
+                        <input class="form-input" id="spAmt-${sp.id}" placeholder="Annual amount (R)" style="width:170px;padding:0.45rem 0.7rem;font-size:0.82rem;">
+                        <button class="btn btn-green btn-sm" onclick="linkSponsorship(${sp.id})">Link school</button>
+                    </div>
+                </div>
+            </div>`).join('') : '<div class="card" style="font-family:Inter,sans-serif;color:var(--text-secondary);">No sponsors captured yet.</div>';
+        document.querySelectorAll('[id^=spSchool-]').forEach(sel => {
+            sel.innerHTML = '<option value="">Link a school…</option>' + allSchools.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+        });
+    }
+    async function addSponsor() {
+        const body = { organisation: document.getElementById('spOrg').value.trim(),
+            contact_person: document.getElementById('spContact').value.trim(),
+            email: document.getElementById('spEmail').value.trim(),
+            phone: document.getElementById('spPhone').value.trim(),
+            focus_area: document.getElementById('spFocus').value.trim(),
+            status: document.getElementById('spStatus').value,
+            notes: document.getElementById('spNotes').value.trim() };
+        if (!body.organisation) { showToast('Organisation name is required.','warn'); return; }
+        const res = await apiFetch('/api/admin/sponsors', { method:'POST', body });
+        if (res?.error) { showToast(res.error,'error'); return; }
+        ['spOrg','spContact','spEmail','spPhone','spFocus','spNotes'].forEach(id=>document.getElementById(id).value='');
+        showToast('Sponsor added.'); loadSponsors();
+    }
+    async function linkSponsorship(spId) {
+        const school_id = document.getElementById('spSchool-'+spId).value;
+        const annual_amount = document.getElementById('spAmt-'+spId).value.replace(/\D/g,'');
+        if (!school_id) { showToast('Choose a school to link.','warn'); return; }
+        const res = await apiFetch(`/api/admin/sponsors/${spId}/sponsorships`, { method:'POST', body:{ school_id:Number(school_id), annual_amount:Number(annual_amount)||null } });
+        if (res?.error) { showToast(res.error,'error'); return; }
+        showToast('School linked.'); loadSponsors();
+    }
+    async function unlinkSponsorship(id) {
+        const res = await apiFetch(`/api/admin/sponsorships/${id}`, { method:'DELETE' });
+        if (res?.error) { showToast(res.error,'error'); return; }
+        loadSponsors();
+    }
+    async function removeSponsor(id, name) {
+        if (!confirm(`Remove sponsor "${name}" and its school links?`)) return;
+        const res = await apiFetch(`/api/admin/sponsors/${id}`, { method:'DELETE' });
+        if (res?.error) { showToast(res.error,'error'); return; }
+        showToast('Sponsor removed.'); loadSponsors();
+    }
+
+    async function moveUser(userId, schoolId) {
+        if (!schoolId) return;
+        const res = await apiFetch(`/api/admin/users/${userId}/school`, {
+            method:'PATCH', body:{ school_id: Number(schoolId) }
+        });
+        if (res?.error) { showToast(res.error,'error'); return; }
+        showToast('User moved to new school.');
+        const updated = await apiFetch('/api/admin/users');
+        if (updated) { allUsers = updated; renderUsers(); }
+    }
+
+    let pendingRemoveId = null;
+    function confirmRemove(id, name) {
+        pendingRemoveId = id;
+        document.getElementById('confirmMsg').textContent = `Remove ${name} from the system? This cannot be undone.`;
+        document.getElementById('confirmModal').classList.add('open');
+        document.getElementById('confirmBtn').onclick = doRemove;
+    }
+
+    async function doRemove() {
+        if (!pendingRemoveId) return;
+        closeModal('confirmModal');
+        const res = await apiFetch(`/api/admin/users/${pendingRemoveId}`, { method:'DELETE' });
+        if (res?.error) { showToast(res.error,'error'); return; }
+        showToast('User removed.');
+        allUsers = allUsers.filter(u=>u.id!==pendingRemoveId);
+        pendingRemoveId = null;
+        renderUsers();
+    }
+
+    // ── Schools ────────────────────────────────────────────────────────────────
+    function renderSchoolsTab(schools) {
+        const el = document.getElementById('schoolsTableBody');
+        if (!el) return;
+        el.innerHTML = schools.length ? schools.map(s => `
+            <tr>
+                <td class="strong">${s.name}</td>
+                <td class="muted">${s.location}</td>
+                <td>${s.facilitator_name || '—'}</td>
+                <td class="num">${s.student_count}</td>
+                <td>${s.facilitator_name ? '<span class="tag tag-ok">staffed</span>' : '<span class="tag tag-warn">unassigned</span>'}</td>
+            </tr>`).join('') : '<tr><td colspan="5" class="table-empty">No schools yet.</td></tr>';
+    }
+
+    async function addSchool() {
+        const name     = document.getElementById('newSchoolName').value.trim();
+        const location = document.getElementById('newSchoolLocation').value.trim();
+        if (!name||!location) { showToast('Please fill in both fields.','warn'); return; }
+        const res = await apiFetch('/api/admin/schools', { method:'POST', body:{name,location} });
+        if (res?.error) { showToast(res.error,'error'); return; }
+        showToast('School added!');
+        document.getElementById('newSchoolName').value='';
+        document.getElementById('newSchoolLocation').value='';
+        const updated = await apiFetch('/api/admin/schools');
+        if (updated) { allSchools=updated; renderSchoolsTab(updated); populateSchoolDropdown(updated); }
+    }
+
+    // ── Readings ───────────────────────────────────────────────────────────────
+    function renderReadings(readings) {
+        document.getElementById('readingsList').innerHTML = readings.length
+            ? readings.map(r => {
+                const hasFile   = r.file_name && r.file_name.length > 0;
+                const hasUrl    = r.url && r.url.length > 0;
+                const typeIcon  = hasFile ? ' File' : ' Link';
+                const typeBadge = hasFile ? 'badge-green' : 'badge-blue';
+                // Escape data for onclick attribute safely
+                const safeTitle = (r.title||'').replace(/'/g,"\'");
+                const safeCat   = (r.category||'').replace(/'/g,"\'");
+                const safeDesc  = (r.description||'').replace(/'/g,"\'");
+                const safeUrl   = (r.url||'').replace(/'/g,"\'");
+                const safeFile  = (r.file_name||'').replace(/'/g,"\'");
+                return `<div class="list-item" style="flex-wrap:wrap;gap:0.75rem;margin-bottom:0.6rem;">
+                    <div style="flex:1;min-width:180px;">
+                        <div class="list-item-title">${r.title}</div>
+                        <div class="list-item-meta" style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;margin-top:0.3rem;">
+                            <span class="badge badge-purple" style="font-size:0.7rem;">${r.category}</span>
+                            <span class="badge ${typeBadge}" style="font-size:0.7rem;">${typeIcon}</span>
+                            <span style="font-size:0.78rem;color:var(--text-secondary);">by ${r.added_by_name}</span>
+                        </div>
+                        ${r.description ? `<div style="font-family:'Inter',sans-serif;font-size:0.8rem;color:var(--text-secondary);margin-top:0.25rem;">${r.description}</div>` : ''}
+                    </div>
+                    <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;flex-shrink:0;">
+                        ${hasFile || hasUrl ? `<a href="${apiUrl('/api/readings/'+r.id+'/download?token='+getToken())}" target="_blank" class="btn btn-outline btn-sm" style="text-decoration:none;">
+                            ${hasFile ? '⬇ Download' : ' Open Link'}
+                        </a>` : ''}
+                        <button class="btn btn-outline btn-sm"
+                            onclick="openEditModal(${r.id},'${safeTitle}','${safeCat}','${safeDesc}','${safeUrl}','${safeFile}')">Edit
+                        </button>
+                        <button class="btn btn-outline btn-sm" style="color:var(--accent-red);border-color:var(--accent-red);"
+                            onclick="deleteReading(${r.id})">Delete
+                        </button>
+                    </div>
+                </div>`;
+            }).join('')
+            : '<div style="font-family:Inter,sans-serif;color:var(--text-secondary);">No readings yet.</div>';
+    }
+
+    async function addReading() {
+        const title   = document.getElementById('readTitle').value.trim();
+        const cat     = document.getElementById('readCat').value;
+        const desc    = document.getElementById('readDesc').value.trim();
+        const url     = document.getElementById('readUrl').value.trim();
+        const fileEl  = document.getElementById('readFile');
+        const file    = fileEl.files[0];
+
+        if (!title) { showToast('Please enter a title.','warn'); return; }
+        if (!file && !url) { showToast('Please upload a file or paste a URL.','warn'); return; }
+        if (file && file.size > 50*1024*1024) { showToast('File exceeds 50MB.','error'); return; }
+
+        // Use FormData so we can send a file
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('category', cat);
+        formData.append('description', desc);
+        if (file) {
+            formData.append('file', file);
+        } else {
+            formData.append('url', url);
+        }
+
+        const token = getToken();
+        const res = await fetch('/api/readings', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token },
+            body: formData   // NOTE: no Content-Type header — browser sets multipart boundary
+        });
+        const data = await res.json();
+        if (data.error) { showToast(data.error,'error'); return; }
+
+        showToast('Reading added successfully!');
+        ['readTitle','readDesc','readUrl'].forEach(id=>document.getElementById(id).value='');
+        fileEl.value = '';
+        const updated = await apiFetch('/api/readings');
+        if (updated) renderReadings(updated);
+    }
+
+    // ── Edit Reading ──────────────────────────────────────────────────────
+    function openEditModal(id, title, category, description, url, fileName) {
+        document.getElementById('editReadingId').value    = id;
+        document.getElementById('editReadTitle').value    = title;
+        document.getElementById('editReadDesc').value     = description;
+        document.getElementById('editReadUrl').value      = url || '';
+        document.getElementById('editRemoveFile').value   = 'false';
+        document.getElementById('editReadFile').value     = '';
+
+        // Set category dropdown
+        const catSel = document.getElementById('editReadCat');
+        for (let i = 0; i < catSel.options.length; i++) {
+            if (catSel.options[i].value === category) {
+                catSel.selectedIndex = i; break;
+            }
+        }
+
+        // Show current file or URL info
+        const fileDiv = document.getElementById('editCurrentFile');
+        const urlDiv  = document.getElementById('editCurrentUrl');
+        if (fileName) {
+            fileDiv.style.display = 'block';
+            urlDiv.style.display  = 'none';
+            // Strip the timestamp prefix for display
+            document.getElementById('editCurrentFileName').textContent =
+                fileName.replace(/^\d+_/, '');
+        } else if (url) {
+            fileDiv.style.display = 'none';
+            urlDiv.style.display  = 'block';
+            document.getElementById('editCurrentUrlText').textContent = url;
+        } else {
+            fileDiv.style.display = 'none';
+            urlDiv.style.display  = 'none';
+        }
+
+        document.getElementById('editReadingModal').classList.add('open');
+    }
+
+    function removeCurrentFile() {
+        document.getElementById('editRemoveFile').value   = 'true';
+        document.getElementById('editCurrentFile').style.display = 'none';
+        showToast('File will be removed when you save.', 'warn');
+    }
+
+    async function saveEdit() {
+        const id    = document.getElementById('editReadingId').value;
+        const title = document.getElementById('editReadTitle').value.trim();
+        const cat   = document.getElementById('editReadCat').value;
+        const desc  = document.getElementById('editReadDesc').value.trim();
+        const url   = document.getElementById('editReadUrl').value.trim();
+        const file  = document.getElementById('editReadFile').files[0];
+        const removeFile = document.getElementById('editRemoveFile').value;
+
+        if (!title) { showToast('Title is required.', 'warn'); return; }
+        if (file && file.size > 50*1024*1024) { showToast('File exceeds 50MB.', 'error'); return; }
+
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('category', cat);
+        formData.append('description', desc);
+        formData.append('removeFile', removeFile);
+
+        if (file) {
+            formData.append('file', file);        // new file replaces old
+        } else if (url) {
+            formData.append('url', url);          // new or updated URL
+        }
+
+        const token = getToken();
+        const res = await fetch('/api/readings/' + id, {
+            method: 'PATCH',
+            headers: { 'Authorization': 'Bearer ' + token },
+            body: formData
+        });
+        const data = await res.json();
+        if (data.error) { showToast(data.error, 'error'); return; }
+
+        showToast('Reading updated successfully!');
+        closeModal('editReadingModal');
+        const updated = await apiFetch('/api/readings');
+        if (updated) renderReadings(updated);
+    }
+
+    // ── Delete Reading ────────────────────────────────────────────────────
+    async function deleteReading(id) {
+        if (!confirm('Delete this reading? This cannot be undone.')) return;
+        const res = await apiFetch('/api/readings/'+id, { method:'DELETE' });
+        if (res?.error) { showToast(res.error,'error'); return; }
+        showToast('Reading deleted.');
+        const updated = await apiFetch('/api/readings');
+        if (updated) renderReadings(updated);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { initTheme(); load(); });
+</script>
+</body>
+</html>

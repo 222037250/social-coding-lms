@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Take Attendance – Social Coding LMS</title>
+    <link rel="stylesheet" href="shared-theme.css">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <meta name="theme-color" content="#bff747">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        .setup-row { display:grid; grid-template-columns:1fr 1fr 1.4fr; gap:0.9rem; margin-bottom:1.5rem; }
+        @media (max-width:700px){ .setup-row { grid-template-columns:1fr; } }
+        .save-bar { position:sticky; bottom:1rem; z-index:30; display:flex; align-items:center; gap:1rem;
+            background:var(--card-bg); border:1px solid var(--card-border); backdrop-filter:blur(16px);
+            border-radius:14px; padding:0.9rem 1.25rem; margin-top:1.5rem; box-shadow:var(--shadow-card); }
+        .save-summary { font-family:'Inter',sans-serif; font-size:0.9rem; color:var(--text-secondary); flex:1; }
+        .save-summary strong { color:var(--text-primary); }
+        .btn-save { padding:0.85rem 1.8rem; background:linear-gradient(135deg,var(--accent-purple),var(--accent-purple2));
+            border:none; border-radius:10px; color:var(--on-brand); font-family:'Inter',sans-serif; font-size:0.95rem;
+            font-weight:700; cursor:pointer; box-shadow:var(--shadow-btn); }
+        .btn-save:active { transform:scale(0.98); }
+        .hint { font-family:'Inter',sans-serif; font-size:0.82rem; color:var(--text-muted); margin-bottom:1rem; }
+        .timer { font-family:'Inter',sans-serif; font-size:0.78rem; color:var(--text-muted); }
+    </style>
+</head>
+<body>
+<div class="bg-glow bg-glow-1"></div><div class="bg-glow bg-glow-2"></div>
+<header>
+    <div class="header-content">
+        <a class="brand" href="/facilitator-dashboard.html"><div class="brand-icon"><img src="/icons/logo-mark-white.png" alt="Social Coding"></div><div><div class="brand-text">Social Coding LMS</div><div class="brand-sub">Facilitator</div></div></a>
+        <div class="header-right">
+            <nav class="nav-links">
+                <a class="nav-link" href="/facilitator-dashboard.html">Home</a>
+                <a class="nav-link" href="/facilitator-students.html">Learners</a>
+                <a class="nav-link active" href="/facilitator-attendance.html">Attendance</a>
+                <a class="nav-link" href="/facilitator-assignments.html">Assignments</a>
+                <a class="nav-link" href="/facilitator-modules.html">Modules</a>
+            </nav>
+            <button class="sync-badge synced" id="syncBadge" onclick="flushOutbox()"><span class="dot"></span> …</button>
+            <label class="theme-toggle"><span id="themeIcon" class="theme-label">Dark</span><div class="toggle-track" onclick="toggleTheme()"><div class="toggle-thumb"></div></div></label>
+            <div style="display:flex;align-items:center;gap:0.6rem;"><div class="avatar" id="userAvatar">SM</div><div><div class="user-name" id="userName"></div><div class="user-meta" id="userMeta"></div></div></div>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </div>
+</header>
+<main>
+    <div class="page-header">
+        <div class="page-title">Take Attendance</div>
+        <div class="page-subtitle">Everyone starts as present — tap only the learners who are absent, then save. Works with no signal.</div>
+    </div>
+
+    <div class="stale-banner" id="staleBanner"></div>
+    <div class="offline-banner" id="offlineBanner">You're offline. Keep working — this register saves on your phone and syncs to head office when signal returns.</div>
+
+    <div class="card" style="margin-bottom:1.5rem;">
+        <div class="setup-row">
+            <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">Session date</label>
+                <input type="date" class="form-input" id="sessionDate">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">Session</label>
+                <select class="form-input" id="sessionType">
+                    <option value="morning">Morning</option>
+                    <option value="afternoon">Afternoon</option>
+                    <option value="evening">Evening</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">Lesson taught</label>
+                <select class="form-input" id="lessonSelect"><option value="">— select lesson —</option></select>
+            </div>
+        </div>
+    </div>
+
+    <div class="hint">Tap a learner to toggle Present ⇄ Absent · <span class="timer" id="timer"></span></div>
+    <div class="roster-grid" id="roster"></div>
+
+    <div class="save-bar">
+        <div class="save-summary" id="saveSummary">Loading roster…</div>
+        <button class="btn-save" onclick="saveRegister()">Save register</button>
+    </div>
+</main>
+<nav class="bottom-nav">
+    <a href="/facilitator-dashboard.html"><span class="nav-label">Home</span></a>
+    <a href="/facilitator-students.html"><span class="nav-label">Learners</span></a>
+    <a href="/facilitator-attendance.html" class="active"><span class="nav-label">Attend</span></a>
+    <a href="/facilitator-assignments.html"><span class="nav-label">Work</span></a>
+    <a href="/facilitator-modules.html"><span class="nav-label">Modules</span></a>
+</nav>
+<div class="toast" id="toast"><span id="toastMsg"></span></div>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script src="offline.js"></script>
+<script>
+   let students = [], absentIds = new Set(), t0 = null;
+
+    async function load() {
+        requireAuth('facilitator');
+        populateHeader();
+        document.getElementById('sessionDate').value = new Date().toISOString().slice(0,10);
+
+        // Network-first, cache fallback: the roster must load with zero signal
+        let data = await apiFetch('/api/roster');
+        if (!data || data.offline || data.error) {
+            data = await cacheGet('roster');
+            if (!data) {
+                document.getElementById('saveSummary').textContent =
+                    'No cached roster yet — open this page once while online to enable offline use.';
+                return;
+            }
+        } else {
+            await cachePut('roster', data);
+        }
+
+        students = data.students;
+        const sel = document.getElementById('lessonSelect');
+        data.lessons.forEach(l => {
+            const o = document.createElement('option');
+            o.value = l.id; o.textContent = `${l.code} · ${l.title}`;
+            sel.appendChild(o);
+        });
+        renderRoster();
+        t0 = Date.now();
+    }
+
+    function renderRoster() {
+        document.getElementById('roster').innerHTML = students.map(s => {
+            const absent = absentIds.has(s.id);
+            return `<div class="roster-card ${absent?'absent':''}" onclick="toggle(${s.id})">
+                <div class="roster-avatar">${s.name[0]}${s.surname[0]}</div>
+                <div>
+                    <div class="roster-name">${s.name} ${s.surname}</div>
+                    <div class="roster-number">${s.student_number || ''}</div>
+                </div>
+                <div class="roster-state">${absent ? 'ABSENT' : 'PRESENT'}</div>
+            </div>`;
+        }).join('');
+        const a = absentIds.size;
+        document.getElementById('saveSummary').innerHTML =
+            `<strong>${students.length - a} present</strong> · ${a} absent · ${students.length} learners`;
+    }
+
+    function toggle(id) {
+        absentIds.has(id) ? absentIds.delete(id) : absentIds.add(id);
+        renderRoster();
+    }
+
+    async function saveRegister() {
+        if (!students.length) return;
+        const payload = {
+            session_date: document.getElementById('sessionDate').value,
+            session_type: document.getElementById('sessionType').value,
+            lesson_id: document.getElementById('lessonSelect').value || null,
+            records: students.map(s => ({ student_id: s.id, status: absentIds.has(s.id) ? 'absent' : 'present' }))
+        };
+        const secs = t0 ? Math.round((Date.now() - t0)/1000) : null;
+
+        // Always queue through the outbox: identical path online and offline.
+        await queueMutation('session_attendance', payload);
+        showToast(navigator.onLine
+            ? `Register saved${secs ? ' in ' + secs + 's' : ''} — syncing to head office`
+            : `Register saved on this phone${secs ? ' in ' + secs + 's' : ''} — will sync when signal returns`);
+        absentIds = new Set();
+        renderRoster();
+        t0 = Date.now();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { initTheme(); load(); });
+</script>
+</body>
+</html>

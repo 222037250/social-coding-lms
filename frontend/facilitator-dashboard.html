@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facilitator – Social Coding LMS</title>
+    <link rel="stylesheet" href="shared-theme.css">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <meta name="theme-color" content="#bff747">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        .flow-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1.25rem; margin-top:1.5rem; }
+        .flow-card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:16px; padding:1.75rem;
+            cursor:pointer; transition:all 0.2s; text-decoration:none; color:var(--text-primary); display:block; }
+        .flow-card:hover { transform:translateY(-3px); border-color:rgba(191,247,71,0.4); background:var(--card-hover-bg); }
+        .flow-icon { font-size:2rem; margin-bottom:0.75rem; }
+        .flow-title { font-size:1.2rem; font-weight:700; margin-bottom:0.4rem; }
+        .flow-desc { font-family:'Inter',sans-serif; font-size:0.85rem; color:var(--text-secondary); line-height:1.5; }
+        .flow-cta { display:inline-block; margin-top:0.9rem; font-family:'Inter',sans-serif; font-size:0.82rem; font-weight:700; color:var(--accent-purple); }
+    </style>
+</head>
+<body>
+<div class="bg-glow bg-glow-1"></div><div class="bg-glow bg-glow-2"></div>
+<header>
+    <div class="header-content">
+        <a class="brand" href="/facilitator-dashboard.html"><div class="brand-icon"><img src="/icons/logo-mark-white.png" alt="Social Coding"></div><div><div class="brand-text">Social Coding LMS</div><div class="brand-sub">Facilitator</div></div></a>
+        <div class="header-right">
+            <nav class="nav-links">
+                <a class="nav-link active" href="/facilitator-dashboard.html">Home</a>
+                <a class="nav-link" href="/facilitator-students.html">Learners</a>
+                <a class="nav-link" href="/facilitator-attendance.html">Attendance</a>
+                <a class="nav-link" href="/facilitator-assignments.html">Assignments</a>
+                <a class="nav-link" href="/facilitator-modules.html">Modules</a>
+            </nav>
+            <button class="sync-badge synced" id="syncBadge" onclick="flushOutbox()"><span class="dot"></span> …</button>
+            <label class="theme-toggle"><span id="themeIcon" class="theme-label">Dark</span><div class="toggle-track" onclick="toggleTheme()"><div class="toggle-thumb"></div></div></label>
+            <div style="display:flex;align-items:center;gap:0.6rem;"><div class="avatar" id="userAvatar">SM</div><div><div class="user-name" id="userName"></div><div class="user-meta" id="userMeta"></div></div></div>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </div>
+</header>
+<main>
+    <div class="page-header">
+        <div class="page-title" id="welcome">Welcome back </div>
+        <div class="page-subtitle" id="schoolLine">Everything here works offline and syncs when you have signal.</div>
+    </div>
+
+    <div class="stale-banner" id="staleBanner"></div>
+    <div class="offline-banner" id="offlineBanner">You're offline. Attendance capture still works — records sync automatically when signal returns.</div>
+
+    <div class="stats-grid">
+        <div class="stat-card"><div class="top-bar top-bar-purple"></div><div class="stat-value" id="statLearners">…</div><div class="stat-label">Learners</div></div>
+        <div class="stat-card"><div class="top-bar top-bar-amber"></div><div class="stat-value" id="statQueue">…</div><div class="stat-label">Submissions to mark</div></div>
+        <div class="stat-card"><div class="top-bar top-bar-green"></div><div class="stat-value" id="statOpen">…</div><div class="stat-label">Open assignments</div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:1.75rem;">
+        <div class="section-header"><div>
+            <div class="section-title">Learners who need attention</div>
+            <div class="section-sub" id="riskSub">Flagged automatically from attendance, submissions and marks</div>
+        </div><a class="btn btn-sm" style="text-decoration:none;" href="/facilitator-students.html">All learners</a></div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Learner</th><th>Student no.</th><th>Flag</th><th>Why</th><th class="num">Attendance</th><th class="num">Average</th></tr></thead>
+                <tbody id="riskBody"><tr><td colspan="6" class="table-empty">Checking…</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1.75rem;">
+        <div class="section-header"><div>
+            <div class="section-title">Field sync</div>
+            <div class="section-sub" id="syncSub">Everything captured offline is queued here until signal returns</div>
+        </div><button class="btn btn-sm btn-primary" onclick="flushOutbox().then(refreshSync)">Sync now</button></div>
+        <div id="syncPanel" class="muted" style="font-family:'Inter',sans-serif;font-size:0.86rem;">Checking…</div>
+    </div>
+
+    <div class="flow-grid">
+        <a class="flow-card" href="/facilitator-attendance.html">
+            <div class="flow-icon"></div>
+            <div class="flow-title">Take attendance</div>
+            <div class="flow-desc">Roster loads with everyone present — tap the absentees and save. About 30 seconds, no signal needed.</div>
+            <span class="flow-cta">Open register →</span>
+        </a>
+        <a class="flow-card" href="/facilitator-assignments.html">
+            <div class="flow-icon"></div>
+            <div class="flow-title">Assignments & marking</div>
+            <div class="flow-desc">Publish assignments with open and due dates. Return marks within your 7-day window.</div>
+            <span class="flow-cta">Open assignments →</span>
+        </a>
+        <a class="flow-card" href="/facilitator-modules.html">
+            <div class="flow-icon"></div>
+            <div class="flow-title">Modules & materials</div>
+            <div class="flow-desc">Upload slides and worksheets per lesson. Learners open them in the lab and save them for offline.</div>
+            <span class="flow-cta">Open modules →</span>
+        </a>
+    </div>
+</main>
+<nav class="bottom-nav">
+    <a href="/facilitator-dashboard.html" class="active"><span class="nav-label">Home</span></a>
+    <a href="/facilitator-students.html"><span class="nav-label">Learners</span></a>
+    <a href="/facilitator-attendance.html"><span class="nav-label">Attend</span></a>
+    <a href="/facilitator-assignments.html"><span class="nav-label">Work</span></a>
+    <a href="/facilitator-modules.html"><span class="nav-label">Modules</span></a>
+</nav>
+<div class="toast" id="toast"><span id="toastMsg"></span></div>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script src="offline.js"></script>
+<script>
+   async function load() {
+        const user = requireAuth('facilitator');
+        populateHeader();
+        document.getElementById('welcome').textContent = `Welcome back, ${user.name} `;
+        if (user.schoolName) document.getElementById('schoolLine').textContent =
+            `${user.schoolName} · everything here works offline and syncs when you have signal.`;
+
+        const [rosterR, queueR, asgnR, riskR] = await Promise.all([
+            fetchCached('/api/roster'), fetchCached('/api/marking-queue'),
+            fetchCached('/api/assignments'), fetchCached('/api/at-risk')
+        ]);
+        setStaleBanner(rosterR.stale || queueR.stale, rosterR.cachedAt);
+        const roster = rosterR.data, queue = queueR.data, assignments = asgnR.data;
+        renderRisk(riskR.data);
+        refreshSync();
+        if (roster && !roster.offline && roster.students) {
+            document.getElementById('statLearners').textContent = roster.students.length;
+            await cachePut('roster', roster);   // keep the offline roster fresh
+        } else {
+            const cached = await cacheGet('roster');
+            document.getElementById('statLearners').textContent = cached ? cached.students.length : '—';
+        }
+        document.getElementById('statQueue').textContent = Array.isArray(queue) ? queue.length : '—';
+        document.getElementById('statOpen').textContent = Array.isArray(assignments)
+            ? assignments.filter(a =>a.lifecycle === 'open' || a.lifecycle === 'late_window').length : '—';
+    }
+    function renderRisk(r) {
+        const body = document.getElementById('riskBody');
+        if (!r || !Array.isArray(r.learners)) { body.innerHTML = '<tr><td colspan="6" class="table-empty">Not available offline yet.</td></tr>'; return; }
+        document.getElementById('riskSub').textContent =
+            `${r.summary.flagged} of ${r.summary.reviewed} learners flagged · ${r.summary.high} need attention now`;
+        body.innerHTML = r.learners.length ? r.learners.slice(0, 8).map(u => `
+            <tr class="clickable ${u.level==='high'?'risk-high':'risk-medium'}" onclick="window.location='/facilitator-students.html'">
+                <td class="strong">${u.name} ${u.surname}</td>
+                <td class="mono">${u.student_number||'—'}</td>
+                <td><span class="tag ${u.level==='high'?'tag-bad':'tag-warn'}">${u.level==='high'?'needs attention':'watch'}</span></td>
+                <td><ul class="signal-list">${u.signals.slice(0,2).map(s=>`<li>${s}</li>`).join('')}</ul></td>
+                <td class="num">${u.attendance_rate==null?'—':u.attendance_rate+'%'}</td>
+                <td class="num">${u.average_pct==null?'—':u.average_pct+'%'}</td>
+            </tr>`).join('')
+        : '<tr><td colspan="6" class="table-empty">No learners are showing warning signs. </td></tr>';
+    }
+
+    async function refreshSync() {
+        const s = await outboxSummary();
+        const last = localStorage.getItem('sc_last_sync');
+        const el = document.getElementById('syncPanel');
+        if (!s.total) {
+            el.innerHTML = `<span class="tag tag-ok">all synced</span> Last sync: ${last ? new Date(last).toLocaleString('en-ZA') : 'not yet'}`;
+        } else {
+            const parts = Object.entries(s.byEntity)
+                .map(([k,v]) => `${v} ${k.replace('session_attendance','register').replace('grade','mark').replace('assignment','assignment')}${v>1?'s':''}`);
+            el.innerHTML = `<span class="tag tag-warn">${s.total} waiting</span> ${parts.join(' · ')} — queued on this device, will send automatically when there is signal.`;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { initTheme(); load(); });
+    window.addEventListener('online', refreshSync);
+</script>
+</body>
+</html>
